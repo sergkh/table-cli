@@ -228,11 +228,11 @@ class Table: Sequence, IteratorProtocol {
     static func parse(path: String?, hasHeader: Bool?) throws -> Table {
         let file: FileHandle?
         
-        if let pathV = path {
-            file = FileHandle(forReadingAtPath: pathV)
+        if let path {
+            file = try FileHandle(forReadingAtPath: path).orThrow(Errors.fileNotFound(name: path))
         } else {
             file = FileHandle.standardInput
-        }
+        }    
 
         let reader = LineReader(fileHandle: file!)  // TODO: file check
         
