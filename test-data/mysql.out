@@ -1,0 +1,12 @@
++----+------------+-----------+-----------+
+| id | first_name | last_name | available |
++----+------------+-----------+-----------+
+|  1 | John       | Smith     |         1 |
+|  2 | Mary       | McAdams   |         0 |
+|  3 | Steve      | Pitt      |         1 |
+|  4 | Mark       | Cousins   |         1 |
+|  5 | Shaun      | Jones     |         0 |
+|  7 | Amy        | McDonald  |         1 |
+|  8 | Brad       | Swan      |         1 |
+| 10 | Wendy      | Johnson   |         1 |
++----+------------+-----------+-----------+
