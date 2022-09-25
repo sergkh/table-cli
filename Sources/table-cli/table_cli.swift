@@ -15,7 +15,7 @@ enum Errors: Error {
 }
 
 class Format {
-    static let regex = try! NSRegularExpression(pattern: "\\$\\{([A-Za-z0-9]+)\\}")
+    static let regex = try! NSRegularExpression(pattern: "\\$\\{([A-Za-z0-9_\\s]+)\\}")
     let format: String
     let matches: [NSTextCheckingResult]
     let parts: [String]
@@ -84,11 +84,16 @@ class Header {
     let data: String
     let cols: [String]
 
-    init(data: String, separator: String, trim: Bool) {
+    init(data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
         self.data = data
-        var components = data.components(separatedBy: separator)
-        if (trim) {
+        var components = data.components(separatedBy: delimeter)
+        
+        if trim {
             components = components.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        }
+        
+        if hasOuterBorders {
+            components = components.dropFirst().dropLast()
         }
         cols = components
     }
@@ -108,14 +113,20 @@ class Row {
     var components: [String]
     let header: Header?
 
-    init(header: Header?, index: Int, data: String, sep: String, trim: Bool) {
+    init(header: Header?, index: Int, data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
         self.header = header
         self.index = index
         self.data = data
-        var components = data.components(separatedBy: sep)
-        if (trim) {
+        var components = data.components(separatedBy: delimeter)
+        
+        if trim {
             components = components.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         }
+
+        if hasOuterBorders {
+            components = components.dropFirst().dropLast()
+        }
+
         self.components = components
     }
 
@@ -181,25 +192,28 @@ class LineReader {
     }
 }
 
+struct TableConfig {
+    let header: Header?
+    let type: FileType
+    let delimeter: String
+    let trim: Bool    
+    let prereadRows: [String]    
+}
+
 class Table: Sequence, IteratorProtocol {    
     static let sqlHeaderPattern = "^[\\+-]{1,}$"
 
     let reader: LineReader
-    let header: Header?
-    let delimeter: String
-    let trim: Bool
-    var type: FileType
-    let prereadRows: [String]
+    let conf: TableConfig
+    var header: Header? {
+        get { conf.header }
+    }
     private var limit: Int?
     private var line: Int = -1
 
-    private init(reader: LineReader, header: Header?, prereadRows: [String], type: FileType, delimeter: String, trim: Bool) {        
+    private init(reader: LineReader, conf: TableConfig) {        
         self.reader = reader
-        self.header = header
-        self.prereadRows = prereadRows
-        self.type = type
-        self.delimeter = delimeter
-        self.trim = trim
+        self.conf = conf
     }
 
     deinit {
@@ -222,10 +236,18 @@ class Table: Sequence, IteratorProtocol {
             row = reader.readLine()
         }
         
-        return row.map { row in Row(header: header, index:line, data:row, sep: delimeter, trim: trim) }
+        return row.map { row in 
+            Row(
+                header: conf.header, 
+                index:line, 
+                data:row, 
+                delimeter: conf.delimeter, 
+                trim: conf.trim, 
+                hasOuterBorders: conf.type == .sql) 
+        }
     }
 
-    static func parse(path: String?, hasHeader: Bool?) throws -> Table {
+    static func parse(path: String?, hasHeader: Bool?, headerOverride: Header?) throws -> Table {
         let file: FileHandle?
         
         if let path {
@@ -236,8 +258,8 @@ class Table: Sequence, IteratorProtocol {
 
         let reader = LineReader(fileHandle: file!)  // TODO: file check
         
-        if let (header, type, delimeter, trim, rows) = Table.detectFile(reader:reader, hasHeader:hasHeader) {
-            return Table(reader: reader, header: header, prereadRows: rows, type: type, delimeter: delimeter, trim: trim)
+        if let conf = Table.detectFile(reader:reader, hasHeader:hasHeader, headerOverride: headerOverride) {
+            return Table(reader: reader, conf: conf)
         } else {
             throw Errors.notATable
         }
@@ -246,21 +268,18 @@ class Table: Sequence, IteratorProtocol {
     // Detects file type
     // Returns header (if present), file type, column delimeter and list of pre-read rows
     // Pre-read rows necessary for standard input where we can't rewind file back
-    static func detectFile(reader: LineReader, hasHeader: Bool?) -> (Header?, FileType, String, Bool, [String])? {
+    static func detectFile(reader: LineReader, hasHeader: Bool?, headerOverride: Header?) -> TableConfig? {
         if let row = reader.readLine() {            
             if row.matches(Table.sqlHeaderPattern) { // SQL table header used in MySQL/MariaDB like '+----+-------+'
-                print("Detected SQL File")
-                let header = reader.readLine().map { Header(data: $0, separator: "|", trim: true) }
-                return (header, FileType.sql, "|", true, [])
+                let header = reader.readLine().map { Header(data: $0, delimeter: "|", trim: true, hasOuterBorders: true) }
+                return TableConfig(header: headerOverride ?? header, type: FileType.sql, delimeter: "|", trim: true, prereadRows: [])
             } else if row.matches("^([A-Za-z_0-9\\s]+\\|\\s*)*[A-Za-z_0-9\\s]+$") { // Cassandra like header: name | name2 | name3
-                print("Detected Cassandra")
-                let header = Header(data: row, separator: "|", trim: true)
-                return (header, FileType.cassandraSql, "|", true, [])
+                let header = Header(data: row, delimeter: "|", trim: true, hasOuterBorders: false)
+                return TableConfig(header: headerOverride ?? header, type: FileType.cassandraSql, delimeter: "|", trim: true, prereadRows: [])
             } else { 
                 // TODO: detect CSV params
-                print("Detected CSV")
-                let header = Header(data: row, separator: ",", trim: false)
-                return (header, FileType.csv, ",", false, [])
+                let header = Header(data: row, delimeter: ",", trim: false, hasOuterBorders: false)
+                return TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: ",", trim: false, prereadRows: [])
             }
         } else {
             return nil // Empty file
@@ -275,11 +294,8 @@ struct MainApp: ParsableCommand {
     @Option(name: [.short, .customLong("output")], help: "Output file. Or stdout")
     var outputFile: String?
     
-    @Flag(name: .customLong("skip-out-header"), help: "Do not print header in the output") 
+    @Flag(name: .customLong("no-out-header"), help: "Do not print header in the output") 
     var skipOutHeader = false
-
-    @Option(name: [.customLong("if"), .customLong("in-format")], help: "Output file. Or stdout")
-    var inFormat: String?
 
     @Option(name: .customLong("limit"), help: "Process only up to specified number of lines")
     var limitLines: Int?
@@ -303,13 +319,16 @@ struct MainApp: ParsableCommand {
                 outHandle = FileHandle.standardOutput
             }
 
-            let table = try Table.parse(path: inputFile, hasHeader: nil)
+            let headerOverride = header.map { Header(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
+
+            let table = try Table.parse(path: inputFile, hasHeader: nil, headerOverride: headerOverride)
             
             let newLine = "\n".data(using: .utf8)!
 
             var headerLines = 0
 
-            if (!skipOutHeader) {
+            // when print format is set, header is not relevant anymore
+            if !skipOutHeader && printFormat == nil {
                 if let header = table.header {
                     headerLines += 1 
                     outHandle.write(header.asCsvData())
