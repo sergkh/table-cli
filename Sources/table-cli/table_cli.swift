@@ -97,7 +97,9 @@ class Header {
         cols.firstIndex(of: ofColumn)
     }
 
-    func asData() -> Data { data.data(using: .utf8)! }
+    func asCsvData() -> Data { 
+        cols.joined(separator: ",").data(using: .utf8)! 
+    }
 }
 
 class Row {
@@ -106,7 +108,7 @@ class Row {
     var components: [String]
     let header: Header?
 
-    init(header: Header?, index: Int, data: String, sep: String, trim: Bool = false) {
+    init(header: Header?, index: Int, data: String, sep: String, trim: Bool) {
         self.header = header
         self.index = index
         self.data = data
@@ -117,11 +119,13 @@ class Row {
         self.components = components
     }
 
-    func at(index: Int) -> String {
+    subscript(index: Int) -> String {
         components[index]
     }
 
-    func asData() -> Data { data.data(using: .utf8)! }
+    func asCsvData() -> Data { 
+        components.joined(separator: ",").data(using: .utf8)! 
+    }
 
     func colValue(columnName: String) -> String? {
         if let index = header?.index(ofColumn: columnName) {
@@ -211,7 +215,14 @@ class Table: Sequence, IteratorProtocol {
         if (line >= limit ?? Int.max) {
             return nil
         }
-        return reader.readLine().map{ Row(header: header, index:line, data:$0, sep: delimeter) }
+
+        var row = reader.readLine()
+        
+        while row?.matches(Table.sqlHeaderPattern) ?? false {
+            row = reader.readLine()
+        }
+        
+        return row.map { row in Row(header: header, index:line, data:row, sep: delimeter, trim: trim) }
     }
 
     static func parse(path: String?, hasHeader: Bool?) throws -> Table {
@@ -237,14 +248,17 @@ class Table: Sequence, IteratorProtocol {
     // Pre-read rows necessary for standard input where we can't rewind file back
     static func detectFile(reader: LineReader, hasHeader: Bool?) -> (Header?, FileType, String, Bool, [String])? {
         if let row = reader.readLine() {            
-            if row.matches(sqlHeaderPattern) { // SQL table header used in MySQL/MariaDB like '+----+-------+'                
+            if row.matches(Table.sqlHeaderPattern) { // SQL table header used in MySQL/MariaDB like '+----+-------+'
+                print("Detected SQL File")
                 let header = reader.readLine().map { Header(data: $0, separator: "|", trim: true) }
                 return (header, FileType.sql, "|", true, [])
             } else if row.matches("^([A-Za-z_0-9\\s]+\\|\\s*)*[A-Za-z_0-9\\s]+$") { // Cassandra like header: name | name2 | name3
+                print("Detected Cassandra")
                 let header = Header(data: row, separator: "|", trim: true)
                 return (header, FileType.cassandraSql, "|", true, [])
             } else { 
                 // TODO: detect CSV params
+                print("Detected CSV")
                 let header = Header(data: row, separator: ",", trim: false)
                 return (header, FileType.csv, ",", false, [])
             }
@@ -298,7 +312,7 @@ struct MainApp: ParsableCommand {
             if (!skipOutHeader) {
                 if let header = table.header {
                     headerLines += 1 
-                    outHandle.write(header.asData())
+                    outHandle.write(header.asCsvData())
                     outHandle.write(newLine)
                 }            
             }
@@ -319,7 +333,7 @@ struct MainApp: ParsableCommand {
                 if let rowFormat = formatOpt {
                     outHandle.write(rowFormat.fillData(row: row))
                 } else {
-                    outHandle.write(row.asData())
+                    outHandle.write(row.asCsvData())
                 }
                 
                 outHandle.write(newLine)
