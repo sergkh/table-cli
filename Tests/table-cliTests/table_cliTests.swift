@@ -6,6 +6,6 @@ final class table_cliTests: XCTestCase {
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct
         // results.
-        XCTAssertEqual(table_cli().text, "Hello, World!")
+        // XCTAssertEqual(table_cli().text, "Hello, World!")
     }
 }
