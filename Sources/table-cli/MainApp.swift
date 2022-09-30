@@ -20,6 +20,9 @@ struct MainApp: ParsableCommand {
     @Option(name: [.short, .customLong("output")], help: "Output file. Or stdout by default.")
     var outputFile: String?
     
+    @Flag(name: .customLong("no-in-header"), help: "Input file does not have a header. Header can be set externally using --header option or will be automatically named as col1,col2 etc.")
+    var noInHeader = false
+
     @Flag(name: .customLong("no-out-header"), help: "Do not print header in the output.") 
     var skipOutHeader = false
 
@@ -49,8 +52,7 @@ struct MainApp: ParsableCommand {
             }
 
             let headerOverride = header.map { ParsedHeader(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
-
-            let table = try Table.parse(path: inputFile, hasHeader: nil, headerOverride: headerOverride, delimeter: delimeter)
+            let table = try Table.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
             
             let newLine = "\n".data(using: .utf8)!
 
@@ -87,9 +89,22 @@ struct MainApp: ParsableCommand {
                 outHandle.write(newLine)
             }
         } catch let error as Errors {
-            print("Error: \(error)")
+            switch error {
+                case .fileNotFound(let name): 
+                    stdErrPrint("File '\(name)' is not found\n")
+                case .formatError(let error): 
+                    stdErrPrint("File format error: \(error)\n")
+                default: 
+                    stdErrPrint("Unknown error happened\n")
+            }
+            
         } catch {
-            print("Unknown error:")
+            stdErrPrint("Program failed: \(error)\n")
         }
+    }
+
+    func stdErrPrint(_ msg: String) {
+        let stderr = FileHandle.standardError
+        stderr.write(msg.data(using: .utf8)!)
     }
 }

@@ -62,7 +62,7 @@ class Table: Sequence, IteratorProtocol {
         
         return row.map { row in 
             Row(
-                header: conf.header ?? AutoHeader.shared, // TODO: if header is not set use auto header
+                header: conf.header ?? AutoHeader.shared,
                 index:line, 
                 data:row, 
                 delimeter: conf.delimeter, 
@@ -80,12 +80,12 @@ class Table: Sequence, IteratorProtocol {
             file = FileHandle.standardInput
         }    
 
-        let reader = LineReader(fileHandle: file!)  // TODO: file check
+        let reader = LineReader(fileHandle: file!)
         
         if let (conf, prereadRows) = Table.detectFile(reader:reader, hasHeader:hasHeader, headerOverride: headerOverride, delimeter: delimeter) {
             return Table(reader: reader, conf: conf, prereadRows: prereadRows)
         } else {
-            throw Errors.notATable
+            throw Errors.formatError(msg: "Table type detection failed. Try specifying delimeter")
         }
     }
 
@@ -102,8 +102,7 @@ class Table: Sequence, IteratorProtocol {
                 let header = ParsedHeader(data: row, delimeter: "|", trim: true, hasOuterBorders: false)
                 return (TableConfig(header: headerOverride ?? header, type: FileType.cassandraSql, delimeter: "|", trim: true), [])
             } else { 
-                // TODO: detect CSV params
-                let delimeters = delimeter.map{ [$0] } ?? [",", ";", "\t", " "]
+                let delimeters = delimeter.map{ [$0] } ?? [",", ";", "\t", " ", "|"]
 
                 // Pre-read up to 2 rows and apply delimeter to the header and rows.
                 // We choose the delimeter that gives more than 1 column and number of columns match for all rows
@@ -119,8 +118,9 @@ class Table: Sequence, IteratorProtocol {
                     let match = dataRows.allSatisfy { row in row.components(separatedBy: d).count == colsCount}
 
                     if match {
-                        let header = ParsedHeader(data: row, delimeter: d, trim: false, hasOuterBorders: false)
-                        return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: d, trim: false), dataRows)
+                        let header = (hasHeader ?? true) ? ParsedHeader(data: row, delimeter: d, trim: false, hasOuterBorders: false) : nil
+                        let cachedRows = (hasHeader ?? true) ? dataRows : ([row] + dataRows)
+                        return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: d, trim: false), cachedRows)
                     }
                 }
 
