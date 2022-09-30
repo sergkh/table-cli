@@ -19,6 +19,8 @@ jobs:
       run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table-cli/Version.swift
     - name: Build
       run: swift build -c release
+    - name: List build files
+      run: ls -R .build
     - name: Upload Linux artifact
       uses: actions/upload-artifact@v3.1.0
       with:
