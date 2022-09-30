@@ -3,27 +3,39 @@ import Foundation
 
 @main
 struct MainApp: ParsableCommand {
+    static var configuration = CommandConfiguration(
+        commandName: "table",
+        abstract: "A utility for transforming CSV files of SQL output.",
+        discussion: """
+            Examples:
+
+              Print CSV data in the specified format:
+              table in.csv --print "${name} ${last_name}: ${email}"
+            """,
+        version: appVersion     
+    )
+
     @Argument var inputFile: String?
 
-    @Option(name: [.short, .customLong("output")], help: "Output file. Or stdout")
+    @Option(name: [.short, .customLong("output")], help: "Output file. Or stdout by default.")
     var outputFile: String?
     
-    @Flag(name: .customLong("no-out-header"), help: "Do not print header in the output") 
+    @Flag(name: .customLong("no-out-header"), help: "Do not print header in the output.") 
     var skipOutHeader = false
 
-    @Option(name: .customLong("limit"), help: "Process only up to specified number of lines")
+    @Option(name: .customLong("limit"), help: "Process only up to specified number of lines.")
     var limitLines: Int?
 
-    @Option(name: [.customLong("print")], help: "Format output accorindg to format string. Use ${column name} to print column value. Example: Column1 value is ${column1}")
+    @Option(name: [.customLong("print")], help: "Format output accorindg to format string. Use ${column name} to print column value. Example: Column1 value is ${column1}.")
     var printFormat: String?
 
-    @Option(name: .customLong("delimeter"), help: "CSV file delimeter. If not set app will try to detect delimeter automatically")
+    @Option(name: .customLong("delimeter"), help: "CSV file delimeter. If not set app will try to detect delimeter automatically/")
     var delimeter: String?
 
     // @Option(name: .shortAndLong, help: "Filter rows by value. Multiple filters can be set separated by comma. Example: country=UA or size>10")
     // var filter: String?
 
-    @Option(name: .customLong("header"), help: "Override header. Columns should be specified separated by comma")
+    @Option(name: .customLong("header"), help: "Override header. Columns should be specified separated by comma.")
     var header: String?
 
     mutating func run() {
