@@ -48,15 +48,17 @@ jobs:
       id: create_release
       uses: softprops/action-gh-release@v1
       with:
-        name: Release ${{ github.ref }}
         draft: false
         prerelease: false
         generate_release_notes: true
+    - name: Rename osx file
+      run: bash -c 'mkdir osx && mv ./table-cli/release-binary-macos-latest ./osx/table-cli'
+    - name: Rename linux file
+      run: bash -c 'mkdir linux && mv ./table-cli/release-binary-ubuntu-latest ./linux/table-cli'
     - name: Upload Builds
       id: osx_binary_upload
       uses: softprops/action-gh-release@v1
       with:
-        generate_release_notes: true
         files: |
-          .build/apple/Products/Release/table-cli
-          .build/x86_64-unknown-linux-gnu/release/table-cli
+          ./osx/table-cli
+          ./linux/table-cli
