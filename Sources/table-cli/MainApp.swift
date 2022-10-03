@@ -35,8 +35,8 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("delimeter"), help: "CSV file delimeter. If not set app will try to detect delimeter automatically/")
     var delimeter: String?
 
-    // @Option(name: .shortAndLong, help: "Filter rows by value. Multiple filters can be set separated by comma. Example: country=UA or size>10")
-    // var filter: String?
+    @Option(name: .shortAndLong, help: "Filter rows by value. Example: country=UA or size>10")
+    var filter: String?
 
     @Option(name: .customLong("header"), help: "Override header. Columns should be specified separated by comma.")
     var header: String?
@@ -54,6 +54,8 @@ struct MainApp: ParsableCommand {
             let headerOverride = header.map { ParsedHeader(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
             let table = try Table.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
             
+            let filter = try filter.map { try Filter.compile(filter: $0, header: table.header ?? AutoHeader.shared) }
+
             let newLine = "\n".data(using: .utf8)!
 
             var headerLines = 0
@@ -80,6 +82,9 @@ struct MainApp: ParsableCommand {
             }
 
             for row in table {
+                if let filter {
+                    if !filter.apply(row: row) { continue; }
+                }
                 if let rowFormat = formatOpt {
                     outHandle.write(rowFormat.fillData(row: row))
                 } else {
@@ -94,6 +99,8 @@ struct MainApp: ParsableCommand {
                     stdErrPrint("File '\(name)' is not found\n")
                 case .formatError(let error): 
                     stdErrPrint("File format error: \(error)\n")
+                case .filterError(let error): 
+                    stdErrPrint("Filter format error: \(error)\n")                    
                 default: 
                     stdErrPrint("Unknown error happened\n")
             }
