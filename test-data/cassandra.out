@@ -1,0 +1,8 @@
+ row_id | boolean_field | nullable_field | string_field  
+--------+---------------+----------------+--------------
+    151 |          True |           null |           Tag
+    182 |          True |           null |          Ring
+    258 |          True |              7 |           Tag
+    254 |          True |           null |      Bracelet
+    312 |          True |           null |          null
+    451 |          True |           null |          Ring

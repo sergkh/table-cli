@@ -1,0 +1,62 @@
+on:
+  push:
+    tags:
+    - 'v*'
+
+name: Release
+
+jobs:
+  build:
+    name: Swift ${{ matrix.swift }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        swift: ["5.7"]
+    steps:
+    - uses: actions/checkout@v3
+    - uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: ${{ matrix.swift }}
+    - name: Run tests
+      run: swift test        
+    - name: Set version
+      run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table-cli/Version.swift
+    - name: Build
+      run: swift build -c release
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v3.1.0
+      with:
+        name: release-binary-${{ matrix.os }}
+        if-no-files-found: ignore
+        retention-days: 1
+        path: .build/x86_64-unknown-linux-gnu/release/table-cli
+    - name: Upload OSX artifact
+      uses: actions/upload-artifact@v3.1.0
+      with:
+        name: release-binary-${{ matrix.os }}
+        if-no-files-found: ignore
+        retention-days: 1
+        path: .build/x86_64-apple-macosx/release/table-cli
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v3
+    - name: Create GH release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+    - name: Upload Builds
+      id: osx_binary_upload
+      uses: softprops/action-gh-release@v1
+      with:
+        generate_release_notes: true
+        files: |
+          .build/apple/Products/Release/table-cli
+          .build/x86_64-unknown-linux-gnu/release/table-cli

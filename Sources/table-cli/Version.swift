@@ -1,0 +1,1 @@
+let appVersion = "development (2022)"
