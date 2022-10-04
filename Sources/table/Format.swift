@@ -35,7 +35,7 @@ class Format {
         if let h = header {
             for v in vars {
                 if h.index(ofColumn: v) == nil {
-                    throw Errors.formatError(msg: "Unknown column in print format: \(v). Supported columns: \(h.columnsStr())")
+                    throw RuntimeError("Print: Unknown column in print format: \(v). Supported columns: \(h.columnsStr())")
                 }
             }
         }

@@ -5,14 +5,13 @@ protocol Header {
   func index(ofColumn: String) -> Int?
   func asCsvData() -> Data
   func columnsStr() -> String
+  func map(mapper: ColumnsMapper?) -> Header
 }
 
 class ParsedHeader: Header {
-    let data: String
     let cols: [String]
 
-    init(data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
-        self.data = data
+    convenience init(data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
         var components = data.components(separatedBy: delimeter)
         
         if trim {
@@ -22,8 +21,13 @@ class ParsedHeader: Header {
         if hasOuterBorders {
             components = components.dropFirst().dropLast()
         }
-        cols = components
+        
+        self.init(components: components)
     }
+
+    init(components: [String]) {        
+        cols = components
+    }    
 
     func columnsStr() -> String {
       cols.joined(separator: ",")
@@ -35,6 +39,14 @@ class ParsedHeader: Header {
 
     func asCsvData() -> Data { 
         cols.joined(separator: ",").data(using: .utf8)! 
+    }
+
+    func map(mapper: ColumnsMapper?) -> Header {
+      if let mapper {
+        return ParsedHeader(components: mapper.columns.map { self.cols[$0] })
+      } else {
+        return self
+      }
     }
 }
 
@@ -50,11 +62,23 @@ class AutoHeader: Header {
       }
     }
 
+    func name(index: Int) -> String {
+      return "col\(index)"
+    }
+
     func columnsStr() -> String {
       "col1,col2,col3,..."
     }
 
     func asCsvData() -> Data {
       "".data(using: .utf8)! 
+    }
+
+    func map(mapper: ColumnsMapper?) -> Header {
+      if let mapper {
+        return ParsedHeader(components: mapper.columns.map { name(index: $0) })
+      } else {
+        return self
+      }
     }
 }

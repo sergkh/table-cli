@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "table-cli",
+    name: "table",
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.1.4"),
         // .package(url: "https://github.com/groue/GRMustache.swift", from: "4.0.0")
@@ -13,13 +13,13 @@ let package = Package(
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .executableTarget(
-            name: "table-cli",
+            name: "table",
             dependencies: [
                 .product(name: "ArgumentParser", package: "swift-argument-parser"), 
                 // .product(name: "Mustache", package: "GRMustache.swift")
             ]),
         .testTarget(
             name: "table-cliTests",
-            dependencies: ["table-cli"]),
+            dependencies: ["table"]),
     ]
 )

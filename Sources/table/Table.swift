@@ -75,7 +75,7 @@ class Table: Sequence, IteratorProtocol {
         let file: FileHandle?
         
         if let path {
-            file = try FileHandle(forReadingAtPath: path).orThrow(Errors.fileNotFound(name: path))
+            file = try FileHandle(forReadingAtPath: path).orThrow(RuntimeError("File \(path) is not found"))
         } else {
             file = FileHandle.standardInput
         }    
@@ -85,7 +85,7 @@ class Table: Sequence, IteratorProtocol {
         if let (conf, prereadRows) = Table.detectFile(reader:reader, hasHeader:hasHeader, headerOverride: headerOverride, delimeter: delimeter) {
             return Table(reader: reader, conf: conf, prereadRows: prereadRows)
         } else {
-            throw Errors.formatError(msg: "Table type detection failed. Try specifying delimeter")
+            throw RuntimeError("Table type detection failed. Try specifying delimeter")
         }
     }
 
