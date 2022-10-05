@@ -47,16 +47,19 @@ class ColumnsMapper {
     }
   }
 
-  func map(header: Header) -> Header {
-    if let columns {
-      if let parsed = header as? ParsedHeader {
-          return ParsedHeader(components: columns.map { parsed.cols[$0] } + additionalColumns.map { $0.0 })
-      } else if let auto = header as? AutoHeader {
+  func map(header: Header) -> Header {    
+    if let parsed = header as? ParsedHeader {
+        let mappedColumns = columns?.map { parsed.cols[$0] } ?? parsed.cols
+        return ParsedHeader(components: mappedColumns + additionalColumns.map { $0.0 })
+    } else if let auto = header as? AutoHeader {
+      if let columns {
         return ParsedHeader(components: columns.map { auto.name(index: $0) } + additionalColumns.map { $0.0 })
+      } else {
+        return auto
       }
+    } else {
+      return header
     }
-
-    return header
   }
 
   static func parse(cols: String, header: Header) throws -> ColumnsMapper {
