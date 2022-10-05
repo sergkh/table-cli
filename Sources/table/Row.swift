@@ -2,14 +2,10 @@ import Foundation
 
 class Row {
     let index: Int
-    let data: String
     var components: [String]
     let header: Header?
 
-    init(header: Header?, index: Int, data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
-        self.header = header
-        self.index = index
-        self.data = data
+    convenience init(header: Header?, index: Int, data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
         var components = data.components(separatedBy: delimeter)
         
         if trim {
@@ -20,7 +16,13 @@ class Row {
             components = components.dropFirst().dropLast()
         }
 
-        self.components = components
+        self.init(header: header, index: index, components: components)
+    }
+
+    init(header: Header?, index: Int, components: [String]) {
+        self.header = header
+        self.index = index
+        self.components = components   
     }
 
     subscript(index: Int) -> String {

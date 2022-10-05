@@ -1,6 +1,5 @@
 import Foundation
 
-
 protocol Header {
   func index(ofColumn: String) -> Int?
   func asCsvData() -> Data
@@ -8,11 +7,9 @@ protocol Header {
 }
 
 class ParsedHeader: Header {
-    let data: String
     let cols: [String]
 
-    init(data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
-        self.data = data
+    convenience init(data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
         var components = data.components(separatedBy: delimeter)
         
         if trim {
@@ -22,8 +19,13 @@ class ParsedHeader: Header {
         if hasOuterBorders {
             components = components.dropFirst().dropLast()
         }
-        cols = components
+        
+        self.init(components: components)
     }
+
+    init(components: [String]) {        
+        cols = components
+    }    
 
     func columnsStr() -> String {
       cols.joined(separator: ",")
@@ -48,6 +50,10 @@ class AutoHeader: Header {
       } else {
         return nil
       }
+    }
+
+    func name(index: Int) -> String {
+      return "col\(index)"
     }
 
     func columnsStr() -> String {

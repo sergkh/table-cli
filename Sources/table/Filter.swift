@@ -60,11 +60,11 @@ class Filter {
     
       let colName = String(filter[Range(groups.range(at: 1), in: filter)!]).trimmingCharacters(in: .whitespacesAndNewlines)
 
-      let col = try header.index(ofColumn: colName).orThrow(Errors.filterError(msg: "Unknown column \(colName). Available columns: \(header.columnsStr())"))
+      let col = try header.index(ofColumn: colName).orThrow(RuntimeError("Filter: unknown column '\(colName)'. Available columns: \(header.columnsStr())"))
 
       let opStr = String(filter[Range(groups.range(at: 2), in: filter)!])
 
-      let op = try Operator(rawValue: opStr).orThrow(Errors.filterError(msg: "Unsupported comparison operation \(opStr) should be one of =,!=,<,<=,>,>="))
+      let op = try Operator(rawValue: opStr).orThrow(RuntimeError("Filter: unsupported comparison operation '\(opStr)' should be one of =,!=,<,<=,>,>="))
 
       return Filter(
         column: col, 
@@ -72,7 +72,7 @@ class Filter {
         value: String(filter[Range(groups.range(at: 3), in: filter)!]).trimmingCharacters(in: .whitespacesAndNewlines)
       )
     } else {
-      throw Errors.filterError(msg: "Invalid filter format '\(filter)'. Should be <column_name><comparator><value>")
+      throw RuntimeError("Filter: Invalid filter format '\(filter)'. Should be <column_name><comparator><value>")
     }
   }
 

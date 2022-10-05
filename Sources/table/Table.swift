@@ -15,8 +15,7 @@ class Table: Sequence, IteratorProtocol {
     var header: Header? {
         get { conf.header }
     }
-    
-    private var limit = Int.max
+
     private var line: Int = -1
 
     private init(reader: LineReader, conf: TableConfig, prereadRows: [String]) {
@@ -29,16 +28,6 @@ class Table: Sequence, IteratorProtocol {
         reader.close()
     }
 
-    func offset(lines: Int) {
-        for _ in 1...lines {
-            let _ = nextLine()
-        }
-    }
-
-    func limit(lines: Int) {
-        self.limit = lines
-    }
-
     func nextLine() -> String? {
         if (prereadRows.isEmpty) {
             return reader.readLine()
@@ -49,10 +38,6 @@ class Table: Sequence, IteratorProtocol {
 
     func next() -> Row? {
         line += 1
-
-        if (line >= limit) {
-            return nil        
-        }
 
         var row = nextLine()
         
@@ -75,7 +60,7 @@ class Table: Sequence, IteratorProtocol {
         let file: FileHandle?
         
         if let path {
-            file = try FileHandle(forReadingAtPath: path).orThrow(Errors.fileNotFound(name: path))
+            file = try FileHandle(forReadingAtPath: path).orThrow(RuntimeError("File \(path) is not found"))
         } else {
             file = FileHandle.standardInput
         }    
@@ -85,7 +70,7 @@ class Table: Sequence, IteratorProtocol {
         if let (conf, prereadRows) = Table.detectFile(reader:reader, hasHeader:hasHeader, headerOverride: headerOverride, delimeter: delimeter) {
             return Table(reader: reader, conf: conf, prereadRows: prereadRows)
         } else {
-            throw Errors.formatError(msg: "Table type detection failed. Try specifying delimeter")
+            throw RuntimeError("Table type detection failed. Try specifying delimeter")
         }
     }
 
