@@ -1,4 +1,7 @@
 # Table CLI tool
+
+![main workflow](https://github.com/sergkh/table-cli/actions/workflows/build-test.yml/badge.svg)
+
 The **table** is a simple tool to transform table data in CSV or SQL/CQL output format.
 
 If you have a SQL output like that
