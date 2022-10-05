@@ -59,7 +59,10 @@ struct MainApp: ParsableCommand {
         let outHandle: FileHandle
         
         if let outFile = outputFile {
-            outHandle = try FileHandle(forWritingAtPath: outFile).orThrow(RuntimeError("File \(outFile) is not found"))
+            if (!FileManager.default.createFile(atPath: outFile, contents: nil, attributes: nil)) {
+                throw RuntimeError("Unable to create output file \(outFile)")
+            }
+            outHandle = try FileHandle(forWritingAtPath: outFile).orThrow(RuntimeError("Output file \(outFile) is not found"))
         } else {
             outHandle = FileHandle.standardOutput
         }
