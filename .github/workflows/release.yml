@@ -52,9 +52,9 @@ jobs:
         prerelease: false
         generate_release_notes: true
     - name: Rename osx file
-      run: bash -c 'mkdir osx && mv ./table/release-binary-macos-latest ./osx/table'
+      run: bash -c 'mkdir osx && mv ./table-cli/release-binary-macos-latest ./osx/table'
     - name: Rename linux file
-      run: bash -c 'mkdir linux && mv ./table/release-binary-ubuntu-latest ./linux/table'
+      run: bash -c 'mkdir linux && mv ./table-cli/release-binary-ubuntu-latest ./linux/table'
     - name: Upload Builds
       id: osx_binary_upload
       uses: softprops/action-gh-release@v1
