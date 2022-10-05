@@ -23,7 +23,7 @@ struct MainApp: ParsableCommand {
     @Option(name: [.short, .customLong("output")], help: "Output file. Or stdout by default.")
     var outputFile: String?
 
-    @Option(name: .customLong("delimeter"), help: "CSV file delimeter. If not set app will try to detect delimeter automatically.")
+    @Option(name: .customLong("delimeter"), help: "CSV file delimeter. If not set the tool will try to detect delimeter automatically.")
     var delimeter: String?
     
     @Flag(name: .customLong("no-in-header"), help: "Input file does not have a header. Header can be set externally using --header option or will be automatically named as col1,col2 etc.")
@@ -44,11 +44,13 @@ struct MainApp: ParsableCommand {
     @Option(name: [.customLong("print")], help: "Format output accorindg to format string. Use ${column name} to print column value. Example: Column1 value is ${column1}.")
     var printFormat: String?
 
+    // TODO: Support complex or multiple filters?
     @Option(name: .shortAndLong, help: "Filter rows by value. Example: country=UA or size>10.")
     var filter: String?
 
-    // TBD: @Option(name: .shortAndLong, help: "Filter rows by value. Example: country=UA or size>10.")
-    // var addColumn: String?
+    // TODO: Support adding more than one column?
+    @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Example: --add 'curl http://email-db.com/${email}'.")
+    var addColumn: String?
 
     mutating func run() throws {
         let outHandle: FileHandle
@@ -64,14 +66,18 @@ struct MainApp: ParsableCommand {
         
         let filter = try filter.map { try Filter.compile(filter: $0, header: table.header ?? AutoHeader.shared) }
 
-        let colMapper = try columns.map { try ColumnsMapper.parse(cols: $0, header: table.header ?? AutoHeader.shared) }
+        var mapper = try columns.map { try ColumnsMapper.parse(cols: $0, header: table.header ?? AutoHeader.shared) }
+
+        if let addColumn {
+            mapper = try (mapper ?? ColumnsMapper()).addColumn(name: "newCol1", valueProvider: try Format(format: addColumn).validated(header: table.header))
+        }
 
         let newLine = "\n".data(using: .utf8)!
 
         // when print format is set, header is not relevant anymore
         if !skipOutHeader && printFormat == nil {
             if let header = table.header {
-                let mappedHeader = header.map(mapper: colMapper)
+                let mappedHeader = mapper.map { $0.map(header: header) } ?? header
                 outHandle.write(mappedHeader.asCsvData())
                 outHandle.write(newLine)
             }
@@ -96,7 +102,7 @@ struct MainApp: ParsableCommand {
             if let rowFormat = formatOpt {
                 outHandle.write(rowFormat.fillData(row: row))
             } else {
-                let mappedRow = colMapper.map { $0.map(row: row) } ?? row
+                let mappedRow = mapper.map { $0.map(row: row) } ?? row
                 outHandle.write(mappedRow.asCsvData())
             }
             

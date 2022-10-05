@@ -1,11 +1,9 @@
 import Foundation
 
-
 protocol Header {
   func index(ofColumn: String) -> Int?
   func asCsvData() -> Data
   func columnsStr() -> String
-  func map(mapper: ColumnsMapper?) -> Header
 }
 
 class ParsedHeader: Header {
@@ -40,14 +38,6 @@ class ParsedHeader: Header {
     func asCsvData() -> Data { 
         cols.joined(separator: ",").data(using: .utf8)! 
     }
-
-    func map(mapper: ColumnsMapper?) -> Header {
-      if let mapper {
-        return ParsedHeader(components: mapper.columns.map { self.cols[$0] })
-      } else {
-        return self
-      }
-    }
 }
 
 // Used when file has no header, but we would like to address columns with col1, col2, etc.
@@ -72,13 +62,5 @@ class AutoHeader: Header {
 
     func asCsvData() -> Data {
       "".data(using: .utf8)! 
-    }
-
-    func map(mapper: ColumnsMapper?) -> Header {
-      if let mapper {
-        return ParsedHeader(components: mapper.columns.map { name(index: $0) })
-      } else {
-        return self
-      }
     }
 }

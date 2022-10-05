@@ -19,7 +19,7 @@ let package = Package(
                 // .product(name: "Mustache", package: "GRMustache.swift")
             ]),
         .testTarget(
-            name: "table-cliTests",
+            name: "table-Tests",
             dependencies: ["table"]),
     ]
 )
