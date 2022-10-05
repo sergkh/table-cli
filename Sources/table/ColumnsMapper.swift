@@ -27,7 +27,7 @@ class ColumnsMapper {
 
   func map(row: Row) -> Row {
     let newColumnsData = additionalColumns.map { (_, fmt) in
-      shell(fmt.fill(row: row))
+      shell(fmt.fill(rows: [row]))
     }
 
     if let columns {

@@ -38,6 +38,9 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("columns"), help: "Speficies a comma separated list of columns to show in the output. Not compatible with --print.")
     var columns: String?    
 
+    @Option(name: .customLong("skip"), help: "Skip a specified number of initial lines.")
+    var skipLines: Int?
+
     @Option(name: .customLong("limit"), help: "Process only up to specified number of lines.")
     var limitLines: Int?
 
@@ -72,6 +75,8 @@ struct MainApp: ParsableCommand {
             mapper = try (mapper ?? ColumnsMapper()).addColumn(name: "newCol1", valueProvider: try Format(format: addColumn).validated(header: table.header))
         }
 
+        let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }
+
         let newLine = "\n".data(using: .utf8)!
 
         // when print format is set, header is not relevant anymore
@@ -83,26 +88,24 @@ struct MainApp: ParsableCommand {
             }
         }
 
-        if let limit = limitLines {
-            table.limit(lines: limit)
-        }
-    
-        let formatOpt: Format?
-        
-        if let fmt = printFormat {
-            formatOpt = try Format(format: fmt).validated(header: table.header)
-        } else {
-            formatOpt = nil
+        if let limitLines {
+            table.limit(lines: limitLines)
         }
 
+        if let skipLines {
+            table.offset(lines: skipLines)
+        }        
+    
         for row in table {
             if let filter {
                 if !filter.apply(row: row) { continue; }
             }
+            
+            let mappedRow = mapper.map { $0.map(row: row) } ?? row
+
             if let rowFormat = formatOpt {
-                outHandle.write(rowFormat.fillData(row: row))
-            } else {
-                let mappedRow = mapper.map { $0.map(row: row) } ?? row
+                outHandle.write(rowFormat.fillData(rows: [row, mappedRow]))
+            } else {                
                 outHandle.write(mappedRow.asCsvData())
             }
             

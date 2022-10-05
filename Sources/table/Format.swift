@@ -43,12 +43,23 @@ class Format {
         return self
     }
 
-    func fill(row: Row) -> String {
+    func columnValue(rows: [Row], name: String) -> String {
+        for r in rows {
+            if let v = r.colValue(columnName: name) {
+                return v
+            }
+        }
+        return ""
+    }
+
+    // Format allows to specify initial column values as well as 
+    // dynamically formed columns
+    func fill(rows: [Row]) -> String {
         var idx = 0
         var newStr = ""
 
         for v in vars {
-            newStr += parts[idx] + row.colValue(columnName: v)!
+            newStr += parts[idx] + columnValue(rows: rows, name: v)
             idx += 1
         }
 
@@ -57,7 +68,7 @@ class Format {
         return newStr
     }
 
-    func fillData(row: Row) -> Data {
-        fill(row: row).data(using: .utf8)!
+    func fillData(rows: [Row]) -> Data {
+        fill(rows: rows).data(using: .utf8)!
     }
 }
