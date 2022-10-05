@@ -91,19 +91,23 @@ struct MainApp: ParsableCommand {
             }
         }
 
-        if let limitLines {
-            table.limit(lines: limitLines)
-        }
+        var skip = skipLines ?? 0
+        var limit = limitLines ?? Int.max
 
-        if let skipLines {
-            table.offset(lines: skipLines)
-        }        
-    
         for row in table {
             if let filter {
-                if !filter.apply(row: row) { continue; }
+                if !filter.apply(row: row) { continue }
+            }
+
+            if (skip > 0) {
+                skip -= 1
+                continue
             }
             
+            if (limit == 0) { 
+                break 
+            }
+
             let mappedRow = mapper.map { $0.map(row: row) } ?? row
 
             if let rowFormat = formatOpt {
@@ -113,6 +117,7 @@ struct MainApp: ParsableCommand {
             }
             
             outHandle.write(newLine)
+            limit -= 1
         }
     }
 }

@@ -15,8 +15,7 @@ class Table: Sequence, IteratorProtocol {
     var header: Header? {
         get { conf.header }
     }
-    
-    private var limit = Int.max
+
     private var line: Int = -1
 
     private init(reader: LineReader, conf: TableConfig, prereadRows: [String]) {
@@ -29,16 +28,6 @@ class Table: Sequence, IteratorProtocol {
         reader.close()
     }
 
-    func offset(lines: Int) {
-        for _ in 1...lines {
-            let _ = nextLine()
-        }
-    }
-
-    func limit(lines: Int) {
-        self.limit = lines
-    }
-
     func nextLine() -> String? {
         if (prereadRows.isEmpty) {
             return reader.readLine()
@@ -49,10 +38,6 @@ class Table: Sequence, IteratorProtocol {
 
     func next() -> Row? {
         line += 1
-
-        if (line >= limit) {
-            return nil        
-        }
 
         var row = nextLine()
         
