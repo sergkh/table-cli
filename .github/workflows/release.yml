@@ -21,7 +21,7 @@ jobs:
     - name: Run tests
       run: swift test        
     - name: Set version
-      run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table-cli/Version.swift
+      run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table/Version.swift
     - name: Build
       run: swift build -c release
     - name: Upload Linux artifact
