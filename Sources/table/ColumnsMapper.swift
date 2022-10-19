@@ -7,44 +7,47 @@ import Foundation
 class ColumnsMapper {
   let columns: [Int]?
   let additionalColumns: [(String, Format)]
+  let join: Join?
 
-  convenience init() {
-    self.init(columns: nil, addColumns: [])
-  }
-
-  init(columns: [Int]?, addColumns: [(String, Format)]) {
+  init(columns: [Int]? = nil, addColumns: [(String, Format)] = [], join: Join? = nil) {
     self.columns = columns
     self.additionalColumns = addColumns
+    self.join = join
   }
 
   func addColumn(name: String, valueProvider: Format) throws -> ColumnsMapper {
     let tuple = (name, valueProvider)
     return ColumnsMapper(
       columns: self.columns, 
-      addColumns: self.additionalColumns + [tuple]
+      addColumns: self.additionalColumns + [tuple],
+      join: self.join
+    )
+  }
+
+  func join(_ join: Join) -> ColumnsMapper {
+    return ColumnsMapper(
+      columns: self.columns, 
+      addColumns: self.additionalColumns,
+      join: join
     )
   }
 
   func map(row: Row) -> Row {
+    let joinedRow = join?.matching(row: row)
+
     let newColumnsData = additionalColumns.map { (_, fmt) in
-      shell(fmt.fill(rows: [row]))
+      shell(fmt.fill(rows: [row].with(joinedRow)))
     }
 
-    if let columns {
-      return Row(
-        header: row.header, 
-        index: row.index, 
-        components: columns.map { row[$0] } + newColumnsData
-      )
-    } else if !newColumnsData.isEmpty {
-      return Row(
-        header: row.header, 
-        index: row.index, 
-        components: row.components + newColumnsData
-      )
-    } else {
-      return row
-    }
+    let mappedColumns = columns?.map{ row[$0] } ?? row.components 
+
+    let joinedColumns = joinedRow.map{ $0.components } ?? []    
+
+    return Row(
+      header: row.header, 
+      index: row.index, 
+      components: mappedColumns + joinedColumns + newColumnsData
+    )
   }
 
   func map(header: Header) -> Header {    
@@ -69,6 +72,6 @@ class ColumnsMapper {
       try header.index(ofColumn: c).orThrow(RuntimeError("Unknown column '\(c)'. Available columns: \(header.columnsStr())"))
     }
 
-    return ColumnsMapper(columns: colIds, addColumns: [])
+    return ColumnsMapper(columns: colIds)
   }
 }

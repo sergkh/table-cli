@@ -55,6 +55,12 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Example: --add 'curl http://email-db.com/${email}'.")
     var addColumn: String?
 
+    @Option(name: .customLong("join"), help: "Speficies a second file to join with the current one. Joining column is the first one for both tables or can be specified by the --on option.")
+    var join: String?
+
+    @Option(name: .customLong("on"), help: "Speficies column names to join on. Requires --join option. Syntax {table1 column}={table 2 column}. Example: --on city_id=id")
+    var joinCriteria: String?
+
     mutating func run() throws {
         let outHandle: FileHandle
         
@@ -68,6 +74,7 @@ struct MainApp: ParsableCommand {
         }
 
         let headerOverride = header.map { ParsedHeader(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
+        
         let table = try Table.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
         
         let filter = try filter.map { try Filter.compile(filter: $0, header: table.header ?? AutoHeader.shared) }
@@ -78,9 +85,13 @@ struct MainApp: ParsableCommand {
             mapper = try (mapper ?? ColumnsMapper()).addColumn(name: "newCol1", valueProvider: try Format(format: addColumn).validated(header: table.header))
         }
 
+        if let join {
+            mapper = try (mapper ?? ColumnsMapper()).join(Join.parse(join, joinOn: joinCriteria, firstTable: table))
+        }
+
         let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }
 
-        let newLine = "\n".data(using: .utf8)!
+        let newLine = "\n".data(using: .utf8)!        
 
         // when print format is set, header is not relevant anymore
         if !skipOutHeader && printFormat == nil {

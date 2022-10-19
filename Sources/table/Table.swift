@@ -12,9 +12,7 @@ class Table: Sequence, IteratorProtocol {
     var prereadRows: [String]
     let reader: LineReader
     let conf: TableConfig
-    var header: Header? {
-        get { conf.header }
-    }
+    let header: Header?
 
     private var line: Int = -1
 
@@ -22,6 +20,7 @@ class Table: Sequence, IteratorProtocol {
         self.reader = reader
         self.conf = conf
         self.prereadRows = prereadRows
+        self.header = conf.header
     }
 
     deinit {

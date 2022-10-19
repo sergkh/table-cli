@@ -1,7 +1,7 @@
 import XCTest
 @testable import table
 
-final class table_Tests: XCTestCase {
+final class Join_Tests: XCTestCase {
     func testExample() throws {
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct
