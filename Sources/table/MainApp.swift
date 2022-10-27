@@ -77,9 +77,9 @@ struct MainApp: ParsableCommand {
         
         let table = try Table.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
         
-        let filter = try filter.map { try Filter.compile(filter: $0, header: table.header ?? AutoHeader.shared) }
+        let filter = try filter.map { try Filter.compile(filter: $0, header: table.header) }
 
-        var mapper = try columns.map { try ColumnsMapper.parse(cols: $0, header: table.header ?? AutoHeader.shared) }
+        var mapper = try columns.map { try ColumnsMapper.parse(cols: $0, header: table.header) }
 
         if let addColumn {
             mapper = try (mapper ?? ColumnsMapper()).addColumn(name: "newCol1", valueProvider: try Format(format: addColumn).validated(header: table.header))
@@ -95,8 +95,8 @@ struct MainApp: ParsableCommand {
 
         // when print format is set, header is not relevant anymore
         if !skipOutHeader && printFormat == nil {
-            if let header = table.header {
-                let mappedHeader = mapper.map { $0.map(header: header) } ?? header
+            if table.conf.headerPresent {
+                let mappedHeader = mapper.map { $0.map(header: table.header) } ?? table.header
                 outHandle.write(mappedHeader.asCsvData())
                 outHandle.write(newLine)
             }

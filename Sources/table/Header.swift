@@ -42,7 +42,11 @@ class ParsedHeader: Header {
 
 // Used when file has no header, but we would like to address columns with col1, col2, etc.
 class AutoHeader: Header {
-    static var shared: AutoHeader = AutoHeader()
+    let size: Int
+
+    init(size: Int) {
+      self.size = size
+    }
 
     func index(ofColumn: String) -> Int? {
       if ofColumn.starts(with: "col") {
@@ -57,10 +61,10 @@ class AutoHeader: Header {
     }
 
     func columnsStr() -> String {
-      "col1,col2,col3,..."
+      stride(from: 0, to: size, by: 1).map { name(index: $0) }.reduce(""){"\($0),\($1)"}
     }
 
     func asCsvData() -> Data {
-      "".data(using: .utf8)! 
+      columnsStr().data(using: .utf8)! 
     }
 }

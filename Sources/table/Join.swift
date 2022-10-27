@@ -15,7 +15,7 @@ class Join {
     self.secondColumn = secondColumn
     self.matchTable = matchTable
     self.firstColIndex = firstColIndex
-    self.secondColIndex = try matchTable.header.flatMap { $0.index(ofColumn: secondColumn) }.orThrow(RuntimeError("Column \(secondColumn) is not found in table"))
+    self.secondColIndex = try matchTable.header.index(ofColumn: secondColumn).orThrow(RuntimeError("Column \(secondColumn) is not found in table"))
   }
 
   func matching(row: Row) -> Row? {
@@ -53,8 +53,8 @@ class Join {
     return try Join(
       firstColumn: first,
       secondColumn: second,
-      firstColIndex: try firstTable.header.flatMap { $0.index(ofColumn: first) }.orThrow(RuntimeError("Column \(first) is not found in table")),
+      firstColIndex: try firstTable.header.index(ofColumn: first).orThrow(RuntimeError("Column \(first) is not found in table")),
       matchTable: table
     ).load()
-  }  
+  } 
 }

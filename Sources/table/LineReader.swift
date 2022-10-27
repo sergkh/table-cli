@@ -1,6 +1,11 @@
 import Foundation
 
-class LineReader {
+protocol LineReader {
+    func readLine() -> String?
+    func close()
+}
+
+class FileLineReader: LineReader {
     let fileHandle: FileHandle
     let bufferSize: Int = 1024
     var buffer: Data
@@ -14,7 +19,7 @@ class LineReader {
     }
 
     func readLine() -> String? {
-        var rangeOfDelimiter = buffer.range(of: LineReader.newLine)
+        var rangeOfDelimiter = buffer.range(of: FileLineReader.newLine)
         
         while rangeOfDelimiter == nil {
             let chunk = fileHandle.readData(ofLength: bufferSize)
@@ -28,7 +33,7 @@ class LineReader {
                 return nil
             } else {
                 buffer.append(chunk)
-                rangeOfDelimiter = buffer.range(of: LineReader.newLine)
+                rangeOfDelimiter = buffer.range(of: FileLineReader.newLine)
             }
         }
         
@@ -43,4 +48,25 @@ class LineReader {
     func close() -> Void {
         fileHandle.closeFile()
     }
+}
+
+class ArrayLineReader: LineReader {
+    private var index = 0
+    let lines: [String]
+
+    init(_ lines: [String] = []) {
+        self.lines = lines    
+    }
+
+    func readLine() -> String? {
+        if index == lines.count {
+            return nil
+        } else {
+            let line = lines[index]
+            index += 1
+            return line
+        }
+    }
+
+    func close() {}
 }
