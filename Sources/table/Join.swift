@@ -3,23 +3,21 @@ import Foundation
 class Join {
   let firstColumn: String
   let secondColumn: String
-  let matchTable: Table
-  let firstColIndex: Int
   let secondColIndex: Int
+  let matchTable: ParsedTable
 
   var loaded: Bool = false
   var rowsCache: [String:Row] = [:]
 
-  init(firstColumn: String, secondColumn: String, firstColIndex: Int, matchTable: Table) throws {
+  init(firstColumn: String, secondColumn: String, matchTable: ParsedTable) throws {
     self.firstColumn = firstColumn
     self.secondColumn = secondColumn
     self.matchTable = matchTable
-    self.firstColIndex = firstColIndex
     self.secondColIndex = try matchTable.header.index(ofColumn: secondColumn).orThrow(RuntimeError("Column \(secondColumn) is not found in table"))
   }
 
-  func matching(row: Row) -> Row? {
-    rowsCache[row[firstColIndex]]
+  func matching(row: Row) throws -> Row? {
+    try rowsCache[row[firstColumn].orThrow(RuntimeError("Column \(firstColumn) is not found"))]
   }
 
   func load() throws -> Join {
@@ -37,11 +35,11 @@ class Join {
   }
 
   
-  static func parse(_ file: String, joinOn: String?, firstTable: Table) throws -> Join {
-    try parse(try Table.parse(path: file, hasHeader: nil, headerOverride: nil, delimeter: nil), joinOn: joinOn, firstTable: firstTable)
+  static func parse(_ file: String, joinOn: String?, firstTable: any Table) throws -> Join {
+    try parse(try ParsedTable.parse(path: file, hasHeader: nil, headerOverride: nil, delimeter: nil), joinOn: joinOn, firstTable: firstTable)
   }
 
-  static func parse(_ table: Table, joinOn: String?, firstTable: Table) throws -> Join {
+  static func parse(_ table: ParsedTable, joinOn: String?, firstTable: any Table) throws -> Join {
     let (first, second) = try joinOn.map { joinExpr in 
         let components = joinExpr.components(separatedBy: "=")
         if components.count != 2 {
@@ -53,7 +51,6 @@ class Join {
     return try Join(
       firstColumn: first,
       secondColumn: second,
-      firstColIndex: try firstTable.header.index(ofColumn: first).orThrow(RuntimeError("Column \(first) is not found in table")),
       matchTable: table
     ).load()
   } 

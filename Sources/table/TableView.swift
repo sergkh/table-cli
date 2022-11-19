@@ -32,8 +32,8 @@ class ColumnsMapper {
     )
   }
 
-  func map(row: Row) -> Row {
-    let joinedRow = join?.matching(row: row)
+  func map(row: Row) throws -> Row {
+    let joinedRow = try join?.matching(row: row)
 
     let newColumnsData = additionalColumns.map { (_, fmt) in
       shell(fmt.fill(rows: [row].with(joinedRow)))
@@ -74,4 +74,23 @@ class ColumnsMapper {
 
     return ColumnsMapper(columns: colIds)
   }
+}
+
+// Transforms each header or row.
+// Currently supported transformations: 
+// * Column projections
+// * Adding new dynamic columns
+class TableView: Table {
+  let table: any Table
+  let header: Header
+
+  init(table: any Table) {
+    self.table = table
+    self.header = table.header
+  }
+
+  func next() -> Row? {
+    nil
+  }
+
 }

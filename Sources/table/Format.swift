@@ -45,7 +45,7 @@ class Format {
 
     func columnValue(rows: [Row], name: String) -> String {
         for r in rows {
-            if let v = r.colValue(columnName: name) {
+            if let v = r[name] {
                 return v
             }
         }

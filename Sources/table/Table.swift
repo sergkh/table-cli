@@ -1,5 +1,10 @@
 import Foundation
 
+protocol Table: Sequence, IteratorProtocol {
+    var header: Header { get }
+    func next() -> Row?
+}
+
 struct TableConfig {
     let header: Header
     let headerPresent: Bool
@@ -16,7 +21,7 @@ struct TableConfig {
     }
 }
 
-class Table: Sequence, IteratorProtocol {    
+class ParsedTable: Table {    
     static let sqlHeaderPattern = "^[\\+-]{1,}$"
     var prereadRows: [String]
     let reader: LineReader
@@ -49,7 +54,7 @@ class Table: Sequence, IteratorProtocol {
 
         var row = nextLine()
         
-        while row?.matches(Table.sqlHeaderPattern) ?? false {
+        while row?.matches(ParsedTable.sqlHeaderPattern) ?? false {
             row = reader.readLine()
         }
         
@@ -64,11 +69,11 @@ class Table: Sequence, IteratorProtocol {
         }
     }
 
-    static func empty() -> Table {
-        Table(reader: ArrayLineReader([]), conf: TableConfig(header: AutoHeader(size: 0)), prereadRows: [])
+    static func empty() -> ParsedTable {
+        ParsedTable(reader: ArrayLineReader([]), conf: TableConfig(header: AutoHeader(size: 0)), prereadRows: [])
     }
 
-    static func parse(path: String?, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> Table {
+    static func parse(path: String?, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> ParsedTable {
         let file: FileHandle?
         
         if let path {
@@ -80,11 +85,11 @@ class Table: Sequence, IteratorProtocol {
         return try parse(reader: FileLineReader(fileHandle: file!), hasHeader: hasHeader, headerOverride: headerOverride, delimeter: delimeter)
     }
 
-    static func parse(reader: LineReader, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> Table {       
-        if let (conf, prereadRows) = try Table.detectFile(reader:reader, hasHeader:hasHeader, headerOverride: headerOverride, delimeter: delimeter) {
-            return Table(reader: reader, conf: conf, prereadRows: prereadRows)
+    static func parse(reader: LineReader, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> ParsedTable {       
+        if let (conf, prereadRows) = try ParsedTable.detectFile(reader:reader, hasHeader:hasHeader, headerOverride: headerOverride, delimeter: delimeter) {
+            return ParsedTable(reader: reader, conf: conf, prereadRows: prereadRows)
         } else {
-            return Table.empty()
+            return ParsedTable.empty()
         }
     }
 
@@ -94,7 +99,7 @@ class Table: Sequence, IteratorProtocol {
     // TODO: has header is not yet used
     static func detectFile(reader: LineReader, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> (TableConfig, [String])? {
         if let row = reader.readLine() {
-            if row.matches(Table.sqlHeaderPattern) { // SQL table header used in MySQL/MariaDB like '+----+-------+'
+            if row.matches(ParsedTable.sqlHeaderPattern) { // SQL table header used in MySQL/MariaDB like '+----+-------+'
                 let parsedHeader = try reader.readLine().map { 
                     ParsedHeader(data: $0, delimeter: "|", trim: true, hasOuterBorders: true) 
                 }.orThrow(RuntimeError("Failed to parse SQL like header"))

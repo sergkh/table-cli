@@ -75,7 +75,7 @@ struct MainApp: ParsableCommand {
 
         let headerOverride = header.map { ParsedHeader(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
         
-        let table = try Table.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
+        let table = try ParsedTable.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
         
         let filter = try filter.map { try Filter.compile(filter: $0, header: table.header) }
 
@@ -119,7 +119,7 @@ struct MainApp: ParsableCommand {
                 break 
             }
 
-            let mappedRow = mapper.map { $0.map(row: row) } ?? row
+            let mappedRow = try mapper.map { try $0.map(row: row) } ?? row
 
             if let rowFormat = formatOpt {
                 outHandle.write(rowFormat.fillData(rows: [row, mappedRow]))
