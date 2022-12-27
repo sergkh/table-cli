@@ -33,7 +33,7 @@ class ColumnsMapper {
   }
 
   func map(row: Row) throws -> Row {
-    let joinedRow = try join?.matching(row: row)
+    let joinedRow = join?.matching(row: row)
 
     let newColumnsData = additionalColumns.map { (_, fmt) in
       shell(fmt.fill(rows: [row].with(joinedRow)))
@@ -51,18 +51,8 @@ class ColumnsMapper {
   }
 
   func map(header: Header) -> Header {    
-    if let parsed = header as? ParsedHeader {
-        let mappedColumns = columns?.map { parsed.cols[$0] } ?? parsed.cols
-        return ParsedHeader(components: mappedColumns + additionalColumns.map { $0.0 })
-    } else if let auto = header as? AutoHeader {
-      if let columns {
-        return ParsedHeader(components: columns.map { auto.name(index: $0) } + additionalColumns.map { $0.0 })
-      } else {
-        return auto
-      }
-    } else {
-      return header
-    }
+      let mappedColumns = columns?.map { header.cols[$0] } ?? header.cols
+      return Header(components: mappedColumns + additionalColumns.map { $0.0 })
   }
 
   static func parse(cols: String, header: Header) throws -> ColumnsMapper {
@@ -91,6 +81,40 @@ class TableView: Table {
 
   func next() -> Row? {
     nil
+  }
+
+}
+
+/** Joining table view */
+class JoinTableView: Table {
+  var table: any Table
+  let join: Join
+
+  var header: Header { 
+    get {
+      return self.table.header + self.join.matchTable.header
+    }
+  }
+
+  init(table: any Table, join: Join) {
+    self.table = table
+    self.join = join
+  }
+
+  func next() -> Row? {
+    let row = table.next()
+    if let row {
+      let joinedRow = join.matching(row: row)
+      let joinedColumns = joinedRow.map{ $0.components } ?? []
+
+      return Row(
+        header: row.header, 
+        index: row.index, 
+        components: row.components + joinedColumns
+      )
+    } else {
+      return nil
+    }
   }
 
 }

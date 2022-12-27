@@ -1,8 +1,8 @@
 import Foundation
 
-protocol Table: Sequence, IteratorProtocol {
+protocol Table: Sequence<Row>, IteratorProtocol<Row> {
     var header: Header { get }
-    func next() -> Row?
+    mutating func next() -> Row? // TODO: remove me
 }
 
 struct TableConfig {
@@ -70,7 +70,7 @@ class ParsedTable: Table {
     }
 
     static func empty() -> ParsedTable {
-        ParsedTable(reader: ArrayLineReader([]), conf: TableConfig(header: AutoHeader(size: 0)), prereadRows: [])
+        ParsedTable(reader: ArrayLineReader([]), conf: TableConfig(header: Header.auto(size: 0)), prereadRows: [])
     }
 
     static func parse(path: String?, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> ParsedTable {
@@ -101,12 +101,12 @@ class ParsedTable: Table {
         if let row = reader.readLine() {
             if row.matches(ParsedTable.sqlHeaderPattern) { // SQL table header used in MySQL/MariaDB like '+----+-------+'
                 let parsedHeader = try reader.readLine().map { 
-                    ParsedHeader(data: $0, delimeter: "|", trim: true, hasOuterBorders: true) 
+                    Header(data: $0, delimeter: "|", trim: true, hasOuterBorders: true) 
                 }.orThrow(RuntimeError("Failed to parse SQL like header"))
 
                 return (TableConfig(header: headerOverride ?? parsedHeader, type: FileType.sql, delimeter: "|", trim: true), [])
             } else if row.matches("^([A-Za-z_0-9\\s]+\\|\\s*)+[A-Za-z_0-9\\s]+$") { // Cassandra like header: name | name2 | name3
-                let header = ParsedHeader(data: row, delimeter: "|", trim: true, hasOuterBorders: false)
+                let header = Header(data: row, delimeter: "|", trim: true, hasOuterBorders: false)
                 return (TableConfig(header: headerOverride ?? header, type: FileType.cassandraSql, delimeter: "|", trim: true), [])
             } else { 
                 let delimeters = delimeter.map{ [$0] } ?? [",", ";", "\t", " ", "|"]
@@ -125,14 +125,14 @@ class ParsedTable: Table {
                     let match = dataRows.allSatisfy { row in row.components(separatedBy: d).count == colsCount}
 
                     if match {
-                        let header: Header = (hasHeader ?? true) ? ParsedHeader(data: row, delimeter: d, trim: false, hasOuterBorders: false) : AutoHeader(size: 1) // TODO: ???
+                        let header: Header = (hasHeader ?? true) ? Header(data: row, delimeter: d, trim: false, hasOuterBorders: false) : Header.auto(size: 1) // TODO: ???
                         let cachedRows = (hasHeader ?? true) ? dataRows : ([row] + dataRows)
                         return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: d, trim: false), cachedRows)
                     }
                 }
 
                 // Treat as a single line file
-                let header: Header = (hasHeader ?? true) ? ParsedHeader(data: row, delimeter: delimeter ?? ",", trim: false, hasOuterBorders: false) : AutoHeader(size: 1)
+                let header: Header = (hasHeader ?? true) ? Header(data: row, delimeter: delimeter ?? ",", trim: false, hasOuterBorders: false) : Header.auto(size: 1)
                 return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: delimeter ?? ",", trim: false), dataRows)          
             }
         } else {
