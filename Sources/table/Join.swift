@@ -29,14 +29,20 @@ class Join {
   }
 
   func load() throws -> Join {
+    var duplicates = Set<String>()
+
     for r in matchTable {
       let colValue = r[secondColIndex]
       
       if rowsCache[colValue] != nil {
-        throw RuntimeError("Column \(secondColumn) has duplicate value \(colValue)")
+        duplicates.insert(colValue)
       }
 
       rowsCache[colValue] = r
+    }
+
+    if !duplicates.isEmpty {
+      throw RuntimeError("Column \(secondColumn) has duplicate values: \(duplicates.joined(separator: ", "))")
     }
 
     return self
@@ -56,7 +62,7 @@ class Join {
         }
 
         return (components[0], components[1])
-     } ?? (firstTable.header[0], matchTable.header[0])
+    } ?? (firstTable.header[0], matchTable.header[0])
 
     return try Join(
       firstColumn: first,

@@ -22,7 +22,7 @@ class Filter {
     self.numberValue = Int(value)
   }
 
-  static let regex = try! NSRegularExpression(pattern: "([A-Za-z_0-9]+)\\s?([><=!]=?)\\s?(.+)", options: [])
+  static let regex = try! NSRegularExpression(pattern: "([A-Za-z_0-9]+)\\s?([><=!]=?)\\s?(.*)", options: [])
 
   func apply(row: Row) -> Bool {
     let rowVal = row[column]

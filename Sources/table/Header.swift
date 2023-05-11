@@ -2,23 +2,25 @@ import Foundation
 
 class Header {
     let cols: [String]
+    let size: Int 
 
     convenience init(data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
-        var components = data.components(separatedBy: delimeter)
-        
-        if trim {
-            components = components.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        }
-        
-        if hasOuterBorders {
-            components = components.dropFirst().dropLast()
-        }
-        
-        self.init(components: components)
+      var components = data.components(separatedBy: delimeter)
+      
+      if trim {
+          components = components.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+      }
+      
+      if hasOuterBorders {
+          components = components.dropFirst().dropLast()
+      }
+      
+      self.init(components: components)
     }
 
     init(components: [String]) {        
-        cols = components
+      cols = components
+      size = components.count
     }
 
     static func auto(size: Int) -> Header {

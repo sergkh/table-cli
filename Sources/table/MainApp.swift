@@ -91,11 +91,11 @@ struct MainApp: ParsableCommand {
         
         let filter = try filter.map { try Filter.compile(filter: $0, header: table.header) }
 
-        // var mapper = try columns.map { try ColumnsMapper.parse(cols: $0, header: table.header) }
-
-        // if let addColumn {
-        //     mapper = try (mapper ?? ColumnsMapper()).addColumn(name: "newCol1", valueProvider: try Format(format: addColumn).validated(header: table.header))
-        // }
+        if let addColumn {
+            // TODO: add support of Dynamic Row values and move validation right before rendering
+            let newColFormat = try Format(format: addColumn).validated(header: table.header)
+            table = NewColumnsTableView(table: table, additionalColumns: [("newColumn", newColFormat)])
+        }
 
         if let join {
             table = JoinTableView(table: table, join: try Join.parse(join, joinOn: joinCriteria, firstTable: table))
