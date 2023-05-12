@@ -30,14 +30,14 @@ jobs:
         name: release-binary-${{ matrix.os }}
         if-no-files-found: ignore
         retention-days: 1
-        path: .build/x86_64-unknown-linux-gnu/release/table
+        path: .build/release/table
     - name: Upload OSX artifact
       uses: actions/upload-artifact@v3.1.0
       with:
         name: release-binary-${{ matrix.os }}
         if-no-files-found: ignore
         retention-days: 1
-        path: .build/x86_64-apple-macosx/release/table
+        path: .build/release/table
   release:
     needs: build
     runs-on: ubuntu-latest
