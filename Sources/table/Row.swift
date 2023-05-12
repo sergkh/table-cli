@@ -29,15 +29,15 @@ class Row {
         components[index]
     }
 
-    func asCsvData() -> Data { 
-        components.joined(separator: ",").data(using: .utf8)! 
-    }
-
-    func colValue(columnName: String) -> String? {
+    subscript(columnName: String) -> String? {
         if let index = header?.index(ofColumn: columnName) {
             return components[index]
         } else {
             return nil
         }
+    }
+
+    func asCsvData() -> Data { 
+        components.joined(separator: ",").data(using: .utf8)! 
     }
 }

@@ -1,4 +1,4 @@
-// swift-tools-version: 5.7
+// swift-tools-version: 5.8
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "table",
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.1.4"),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.2.2"),
         // .package(url: "https://github.com/groue/GRMustache.swift", from: "4.0.0")
     ],
     targets: [

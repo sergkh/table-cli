@@ -1,6 +1,10 @@
 import ArgumentParser
 import Foundation
 
+struct Global {
+    static var debug: Bool = false
+}
+
 @main
 struct MainApp: ParsableCommand {
     static var configuration = CommandConfiguration(
@@ -32,6 +36,9 @@ struct MainApp: ParsableCommand {
     @Flag(name: .customLong("no-out-header"), help: "Do not print header in the output.") 
     var skipOutHeader = false
 
+    @Flag(help: "Prints debug output") 
+    var debug = false
+
     @Option(name: .customLong("header"), help: "Override header. Columns should be specified separated by comma.")
     var header: String?
 
@@ -55,9 +62,20 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Example: --add 'curl http://email-db.com/${email}'.")
     var addColumn: String?
 
+    @Option(name: .customLong("join"), help: "Speficies a second file to join with the current one. Joining column is the first one for both tables or can be specified by the --on option.")
+    var join: String?
+
+    @Option(name: .customLong("on"), help: "Speficies column names to join on. Requires --join option. Syntax {table1 column}={table 2 column}. Example: --on city_id=id")
+    var joinCriteria: String?
+
     mutating func run() throws {
         let outHandle: FileHandle
         
+        if debug {
+            Global.debug = true
+            print("Debug enabled")
+        }
+
         if let outFile = outputFile {
             if (!FileManager.default.createFile(atPath: outFile, contents: nil, attributes: nil)) {
                 throw RuntimeError("Unable to create output file \(outFile)")
@@ -67,34 +85,37 @@ struct MainApp: ParsableCommand {
             outHandle = FileHandle.standardOutput
         }
 
-        let headerOverride = header.map { ParsedHeader(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
-        let table = try Table.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
+        let headerOverride = header.map { Header(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
         
-        let filter = try filter.map { try Filter.compile(filter: $0, header: table.header ?? AutoHeader.shared) }
-
-        var mapper = try columns.map { try ColumnsMapper.parse(cols: $0, header: table.header ?? AutoHeader.shared) }
+        var table: any Table = try ParsedTable.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
+        
+        let filter = try filter.map { try Filter.compile(filter: $0, header: table.header) }
 
         if let addColumn {
-            mapper = try (mapper ?? ColumnsMapper()).addColumn(name: "newCol1", valueProvider: try Format(format: addColumn).validated(header: table.header))
+            // TODO: add support of Dynamic Row values and move validation right before rendering
+            let newColFormat = try Format(format: addColumn).validated(header: table.header)
+            table = NewColumnsTableView(table: table, additionalColumns: [("newColumn", newColFormat)])
+        }
+
+        if let join {
+            table = JoinTableView(table: table, join: try Join.parse(join, joinOn: joinCriteria, firstTable: table))
         }
 
         let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }
 
-        let newLine = "\n".data(using: .utf8)!
+        let newLine = "\n".data(using: .utf8)!        
 
         // when print format is set, header is not relevant anymore
         if !skipOutHeader && printFormat == nil {
-            if let header = table.header {
-                let mappedHeader = mapper.map { $0.map(header: header) } ?? header
-                outHandle.write(mappedHeader.asCsvData())
-                outHandle.write(newLine)
-            }
+            outHandle.write(table.header.asCsvData())
+            outHandle.write(newLine)
         }
 
         var skip = skipLines ?? 0
         var limit = limitLines ?? Int.max
 
-        for row in table {
+        // for row: Row in table { TODO:
+        while let row = table.next() {
             if let filter {
                 if !filter.apply(row: row) { continue }
             }
@@ -108,12 +129,10 @@ struct MainApp: ParsableCommand {
                 break 
             }
 
-            let mappedRow = mapper.map { $0.map(row: row) } ?? row
-
             if let rowFormat = formatOpt {
-                outHandle.write(rowFormat.fillData(rows: [row, mappedRow]))
+                outHandle.write(rowFormat.fillData(rows: [row]))
             } else {                
-                outHandle.write(mappedRow.asCsvData())
+                outHandle.write(row.asCsvData())
             }
             
             outHandle.write(newLine)
