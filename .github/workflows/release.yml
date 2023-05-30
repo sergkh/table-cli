@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest ]
+        os: [ubuntu-latest]
         swift: ["5.8"]
     steps:
     - uses: actions/checkout@v3
@@ -20,17 +20,15 @@ jobs:
         swift-version: ${{ matrix.swift }}
     - name: Build
       run: swift build -c release
-    - name: List
-      run: ls -la .build/
     - name: List build
-      run: ls -la .build/release
+      run: ls -la .build/x86_64-unknown-linux-gnu/release
     - name: Upload artifact
       uses: actions/upload-artifact@v3.1.0
       with:
         name: release-binary-${{ matrix.os }}
         if-no-files-found: error
         retention-days: 1
-        path: .build/x86_64-unknown-linux-gnu/table
+        path: .build/x86_64-unknown-linux-gnu/release/table
   release:
     needs: build
     runs-on: ubuntu-latest
