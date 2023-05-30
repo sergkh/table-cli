@@ -53,5 +53,14 @@ jobs:
       run: bash -c 'mkdir linux && mv ./release-binary-ubuntu-latest ./linux/table'
     - name: LS
       run: ls -la .
-    - name: LS osx
-      run: ls -la osx
+    - name: Create GH release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+        fail_on_unmatched_files: true
+        files: |
+          ./osx/*
+          ./linux/*
