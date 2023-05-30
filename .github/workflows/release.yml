@@ -18,10 +18,6 @@ jobs:
     - uses: swift-actions/setup-swift@v1
       with:
         swift-version: ${{ matrix.swift }}
-    - name: Build
-      run: swift build -c release
-    - name: List build
-      run: ls -la .build/x86_64-unknown-linux-gnu/release
     - name: Upload linux artifact
       uses: actions/upload-artifact@v3.1.0
       with:
