@@ -2,6 +2,7 @@ on:
   push:
     tags:
     - 'v*'
+  workflow_dispatch:
 
 name: Release
 
@@ -50,18 +51,7 @@ jobs:
       run: bash -c 'mkdir osx && mv ./release-binary-macos-latest ./osx/table'
     - name: Rename linux file
       run: bash -c 'mkdir linux && mv ./release-binary-ubuntu-latest ./linux/table'
-    - name: Create GH release
-      id: create_release
-      uses: softprops/action-gh-release@v1
-      with:
-        draft: false
-        prerelease: false
-        generate_release_notes: true
-    - name: Upload Builds
-      id: osx_binary_upload
-      uses: softprops/action-gh-release@v1
-      with:
-        files: |
-          ./osx/table
-          ./linux/table
-
+    - name: LS
+      run: ls -la .
+    - name: LS osx
+      run: ls -la osx
