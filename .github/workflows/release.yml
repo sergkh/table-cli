@@ -18,9 +18,8 @@ jobs:
     - uses: swift-actions/setup-swift@v1
       with:
         swift-version: ${{ matrix.swift }}
-    - name: List build
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: ls -la .build/x86_64-unknown-linux-gnu/release
+    - name: Build
+      run: swift build -c release
     - name: Upload linux artifact
       if: ${{ matrix.os == 'ubuntu-latest' }}
       uses: actions/upload-artifact@v3.1.0
