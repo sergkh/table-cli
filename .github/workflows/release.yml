@@ -2,6 +2,7 @@ on:
   push:
     tags:
     - 'v*'
+  workflow_dispatch:
 
 name: Release
 
@@ -53,15 +54,12 @@ jobs:
     - name: Create GH release
       id: create_release
       uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
       with:
         draft: false
         prerelease: false
         generate_release_notes: true
-    - name: Upload Builds
-      id: osx_binary_upload
-      uses: softprops/action-gh-release@v1
-      with:
+        fail_on_unmatched_files: true
         files: |
-          ./osx/table
-          ./linux/table
-
+          ./osx/*
+          ./linux/*
