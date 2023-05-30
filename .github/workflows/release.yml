@@ -25,21 +25,14 @@ jobs:
     - name: Build
       run: swift build -c release
     - name: List
-      run: ls .build/
+      run: ls -la .build/
     - name: List build
-      run: ls .build/release      
-    - name: Upload Linux artifact
+      run: ls -la ${{ github.workspace }}/.build/release
+    - name: Upload artifact
       uses: actions/upload-artifact@v3.1.0
       with:
         name: release-binary-${{ matrix.os }}
-        if-no-files-found: ignore
-        retention-days: 1
-        path: .build/release/table
-    - name: Upload OSX artifact
-      uses: actions/upload-artifact@v3.1.0
-      with:
-        name: release-binary-${{ matrix.os }}
-        if-no-files-found: ignore
+        if-no-files-found: error
         retention-days: 1
         path: .build/release/table
   release:
