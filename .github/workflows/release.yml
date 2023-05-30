@@ -44,10 +44,8 @@ jobs:
       uses: actions/download-artifact@v3
     - name: List
       run: ls -la .
-    - name: List table
-      run: ls -la ./table-cli
     - name: Rename osx file
-      run: bash -c 'mkdir osx && mv ./table-cli/release-binary-macos-latest ./osx/table'
+      run: bash -c 'mkdir osx && mv ./release-binary-macos-latest ./osx/table'
     - name: Rename linux file
-      run: bash -c 'mkdir linux && mv ./table-cli/release-binary-ubuntu-latest ./linux/table'
+      run: bash -c 'mkdir linux && mv ./release-binary-ubuntu-latest ./linux/table'
     
