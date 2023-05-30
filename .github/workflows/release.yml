@@ -21,29 +21,35 @@ jobs:
     - name: Run tests
       run: swift test        
     - name: Set version
-      run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table/Version.swift
+      run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table/Version.swift  
     - name: Build
       run: swift build -c release
-    - name: Upload Linux artifact
+    - name: Upload linux artifact
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       uses: actions/upload-artifact@v3.1.0
-      with:
+      with:        
         name: release-binary-${{ matrix.os }}
-        if-no-files-found: ignore
+        if-no-files-found: error
         retention-days: 1
-        path: .build/release/table
+        path: .build/x86_64-unknown-linux-gnu/release/table     
     - name: Upload OSX artifact
+      if: ${{ matrix.os == 'macos-latest' }}
       uses: actions/upload-artifact@v3.1.0
       with:
         name: release-binary-${{ matrix.os }}
-        if-no-files-found: ignore
+        if-no-files-found: error
         retention-days: 1
-        path: .build/release/table
+        path: .build/x86_64-apple-macosx/release/table       
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
     - name: Download artifact
       uses: actions/download-artifact@v3
+    - name: Rename osx file
+      run: bash -c 'mkdir osx && mv ./release-binary-macos-latest ./osx/table'
+    - name: Rename linux file
+      run: bash -c 'mkdir linux && mv ./release-binary-ubuntu-latest ./linux/table'
     - name: Create GH release
       id: create_release
       uses: softprops/action-gh-release@v1
@@ -51,10 +57,6 @@ jobs:
         draft: false
         prerelease: false
         generate_release_notes: true
-    - name: Rename osx file
-      run: bash -c 'mkdir osx && mv ./table-cli/release-binary-macos-latest ./osx/table'
-    - name: Rename linux file
-      run: bash -c 'mkdir linux && mv ./table-cli/release-binary-ubuntu-latest ./linux/table'
     - name: Upload Builds
       id: osx_binary_upload
       uses: softprops/action-gh-release@v1
@@ -62,3 +64,4 @@ jobs:
         files: |
           ./osx/table
           ./linux/table
+
