@@ -51,11 +51,10 @@ jobs:
       run: bash -c 'mkdir osx && mv ./release-binary-macos-latest ./osx/table'
     - name: Rename linux file
       run: bash -c 'mkdir linux && mv ./release-binary-ubuntu-latest ./linux/table'
-    - name: LS
-      run: ls -la .
     - name: Create GH release
       id: create_release
       uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
       with:
         draft: false
         prerelease: false
