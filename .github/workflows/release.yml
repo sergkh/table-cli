@@ -2,7 +2,7 @@ on:
   push:
     tags:
     - 'v*'
-  workflow_dispatch:
+
 name: Release
 
 jobs:
@@ -18,6 +18,10 @@ jobs:
     - uses: swift-actions/setup-swift@v1
       with:
         swift-version: ${{ matrix.swift }}
+    - name: Run tests
+      run: swift test        
+    - name: Set version
+      run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table/Version.swift  
     - name: Build
       run: swift build -c release
     - name: Upload linux artifact
@@ -42,10 +46,22 @@ jobs:
     steps:
     - name: Download artifact
       uses: actions/download-artifact@v3
-    - name: List
-      run: ls -la .
     - name: Rename osx file
       run: bash -c 'mkdir osx && mv ./release-binary-macos-latest ./osx/table'
     - name: Rename linux file
       run: bash -c 'mkdir linux && mv ./release-binary-ubuntu-latest ./linux/table'
-    
+    - name: Create GH release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+    - name: Upload Builds
+      id: osx_binary_upload
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          ./osx/table
+          ./linux/table
+
