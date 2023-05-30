@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest ]
         swift: ["5.8"]
     steps:
     - uses: actions/checkout@v3
@@ -22,13 +22,20 @@ jobs:
       run: swift build -c release
     - name: List build
       run: ls -la .build/x86_64-unknown-linux-gnu/release
-    - name: Upload artifact
+    - name: Upload linux artifact
       uses: actions/upload-artifact@v3.1.0
       with:
         name: release-binary-${{ matrix.os }}
-        if-no-files-found: error
+        if-no-files-found: ignore
         retention-days: 1
         path: .build/x86_64-unknown-linux-gnu/release/table
+    - name: Upload OSX artifact
+      uses: actions/upload-artifact@v3.1.0
+      with:
+        name: release-binary-${{ matrix.os }}
+        if-no-files-found: ignore
+        retention-days: 1
+        path: .build/x86_64-apple-macosx/release/table       
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -39,3 +46,7 @@ jobs:
       run: bash -c 'mkdir osx && mv ./table-cli/release-binary-macos-latest ./osx/table'
     - name: Rename linux file
       run: bash -c 'mkdir linux && mv ./table-cli/release-binary-ubuntu-latest ./linux/table'
+    - name: List
+      run: ls -la .
+    - name: List table
+      run: ls -la ./table-cli
