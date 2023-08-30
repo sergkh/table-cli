@@ -52,13 +52,13 @@ jobs:
     - name: Zip osx file
       uses: montudor/action-zip@v1
       with:
-        args: zip -qq osx.zip ./table      
+        args: zip -qq osx.zip table      
     - name: Rename linux file
-      run: bash -c 'rm ./table && mv ./release-binary-ubuntu-latest ./table'
+      run: bash -c 'rm -rf ./table && mv ./release-binary-ubuntu-latest ./table'
     - name: Zip linux file
       uses: montudor/action-zip@v1
       with:
-        args: zip -qq linux.zip ./table
+        args: zip -qq linux.zip table
     - name: Show files
       run: ls -la .
     - name: Create GH release
