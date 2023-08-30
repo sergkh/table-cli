@@ -40,7 +40,7 @@ jobs:
         name: release-binary-${{ matrix.os }}
         if-no-files-found: error
         retention-days: 1
-        path: .build/x86_64-apple-macosx/release/table       
+        path: .build/x86_64-apple-macosx/release/table
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -48,19 +48,21 @@ jobs:
     - name: Download artifact
       uses: actions/download-artifact@v3
     - name: Rename osx file
-      run: bash -c 'mv ./release-binary-macos-latest ./table'
+      run: bash -c 'cp ./release-binary-macos-latest ./table'
     - name: Zip osx file
       uses: montudor/action-zip@v1
       with:
-        args: zip -qq osx.zip table      
+        args: zip -qq -r osx.zip ./table
+    - name: Show osx zip
+      run: ls -Rla .
     - name: Rename linux file
-      run: bash -c 'rm -rf ./table && mv ./release-binary-ubuntu-latest ./table'
+      run: bash -c 'rm -rf ./table && cp ./release-binary-ubuntu-latest ./table'
     - name: Zip linux file
       uses: montudor/action-zip@v1
       with:
-        args: zip -qq linux.zip table
+        args: zip -qq -r linux.zip ./table
     - name: Show files
-      run: ls -la .
+      run: ls -Rla .
     - name: Create GH release
       id: create_release
       uses: softprops/action-gh-release@v1
