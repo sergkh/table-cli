@@ -48,15 +48,17 @@ jobs:
     - name: Download artifact
       uses: actions/download-artifact@v3
     - name: Rename osx file
-      run: bash -c 'mkdir osx && mv ./release-binary-macos-latest ./osx/table'
+      run: bash -c 'mv ./release-binary-macos-latest ./table'
+    - uses: montudor/action-zip@v1
+      with:
+        args: zip -qq -r osx.zip ./table      
     - name: Rename linux file
-      run: bash -c 'mkdir linux && mv ./release-binary-ubuntu-latest ./linux/table'
-    - name: Show folter
-      run: pwd
+      run: bash -c 'rm ./table && mv ./release-binary-ubuntu-latest ./table'
+    - uses: montudor/action-zip@v1
+      with:
+        args: zip -qq -r linux-x64.zip ./table
     - name: Show files
       run: ls -la .
-    - name: Show sub files
-      run: ls -la ./osx && ls -la ./linux
     # - name: Create GH release
     #   id: create_release
     #   uses: softprops/action-gh-release@v1
