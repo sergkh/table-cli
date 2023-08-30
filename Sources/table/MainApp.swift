@@ -55,15 +55,15 @@ struct MainApp: ParsableCommand {
     var printFormat: String?
 
     // TODO: Support complex or multiple filters?
-    @Option(name: .shortAndLong, help: "Filter rows by value. Example: country=UA or size>10.")
+    @Option(name: .shortAndLong, help: "Filter rows by a single value criteria. Example: country=UA or size>10. Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains")
     var filter: String?
 
     // TODO: Support adding more than one column?
     @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Example: --add 'curl http://email-db.com/${email}'.")
     var addColumn: String?
 
-    @Option(name: .customLong("join"), help: "Speficies a second file to join with the current one. Joining column is the first one for both tables or can be specified by the --on option.")
-    var join: String?
+    @Option(name: .customLong("join"), help: "Speficies a second file path to join with the current one. Joining column is the first one for both tables or can be specified by the --on option.")
+    var joinFile: String?
 
     @Option(name: .customLong("on"), help: "Speficies column names to join on. Requires --join option. Syntax {table1 column}={table 2 column}. Example: --on city_id=id")
     var joinCriteria: String?
@@ -97,8 +97,8 @@ struct MainApp: ParsableCommand {
             table = NewColumnsTableView(table: table, additionalColumns: [("newColumn", newColFormat)])
         }
 
-        if let join {
-            table = JoinTableView(table: table, join: try Join.parse(join, joinOn: joinCriteria, firstTable: table))
+        if let joinFile {
+            table = JoinTableView(table: table, join: try Join.parse(joinFile, joinOn: joinCriteria, firstTable: table))
         }
 
         let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }

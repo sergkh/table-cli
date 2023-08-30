@@ -80,3 +80,8 @@ table in.csv --columns 'name,last_name'
 table in.csv --add 'echo "${cost} * ${amount}" | bc'
 ```
 
+## Building from source
+
+```bash
+swift build -c release
+```

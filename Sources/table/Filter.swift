@@ -7,6 +7,9 @@ enum Operator: String, CaseIterable {
   case gt = ">"
   case gtEq = ">="
   case notEq = "!="
+  case contains = "~="
+  case startsWith = "^="
+  case endsWith = "$="
 }
 
 class Filter {
@@ -22,7 +25,7 @@ class Filter {
     self.numberValue = Int(value)
   }
 
-  static let regex = try! NSRegularExpression(pattern: "([A-Za-z_0-9]+)\\s?([><=!]=?)\\s?(.*)", options: [])
+  static let regex = try! NSRegularExpression(pattern: "([A-Za-z_0-9]+)\\s?([><=!^~\\$]=?)\\s?(.*)", options: [])
 
   func apply(row: Row) -> Bool {
     let rowVal = row[column]
@@ -47,6 +50,9 @@ class Filter {
       case .gt: return v1 > v2
       case .gtEq: return  v1 >= v2
       case .notEq: return v1 != v2
+      case .contains: return String(describing: v1).contains(String(describing: v2))
+      case .startsWith: return String(describing: v1).starts(with: String(describing: v2))
+      case .endsWith: return String(describing: v1).hasSuffix(String(describing: v2))
     }
   }
 
@@ -64,7 +70,7 @@ class Filter {
 
       let opStr = String(filter[Range(groups.range(at: 2), in: filter)!])
 
-      let op = try Operator(rawValue: opStr).orThrow(RuntimeError("Filter: unsupported comparison operation '\(opStr)' should be one of =,!=,<,<=,>,>="))
+      let op = try Operator(rawValue: opStr).orThrow(RuntimeError("Filter: unsupported comparison operation '\(opStr)' should be one of =, !=, <, <=, >, >=, ^= (starts with), $= (ends with), ~= (contains)"))
 
       return Filter(
         column: col, 
