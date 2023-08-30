@@ -47,8 +47,10 @@ jobs:
     steps:
     - name: Download artifact
       uses: actions/download-artifact@v3
+    - name: Show osx zip
+      run: ls -Rla .      
     - name: Rename osx file
-      run: bash -c 'cp ./release-binary-macos-latest ./table'
+      run: bash -c 'cp -r ./release-binary-macos-latest ./table'
     - name: Zip osx file
       uses: montudor/action-zip@v1
       with:
@@ -56,7 +58,7 @@ jobs:
     - name: Show osx zip
       run: ls -Rla .
     - name: Rename linux file
-      run: bash -c 'rm -rf ./table && cp ./release-binary-ubuntu-latest ./table'
+      run: bash -c 'rm -rf ./table && cp -r ./release-binary-ubuntu-latest ./table'
     - name: Zip linux file
       uses: montudor/action-zip@v1
       with:
