@@ -51,15 +51,21 @@ jobs:
       run: bash -c 'mkdir osx && mv ./release-binary-macos-latest ./osx/table'
     - name: Rename linux file
       run: bash -c 'mkdir linux && mv ./release-binary-ubuntu-latest ./linux/table'
-    - name: Create GH release
-      id: create_release
-      uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        draft: false
-        prerelease: false
-        generate_release_notes: true
-        fail_on_unmatched_files: true
-        files: |
-          ./osx/*
-          ./linux/*
+    - name: Show folter
+      run: pwd
+    - name: Show files
+      run: ls -la .
+    - name: Show sub files
+      run: ls -la ./osx && ls -la ./linux
+    # - name: Create GH release
+    #   id: create_release
+    #   uses: softprops/action-gh-release@v1
+    #   if: startsWith(github.ref, 'refs/tags/')
+    #   with:
+    #     draft: false
+    #     prerelease: false
+    #     generate_release_notes: true
+    #     fail_on_unmatched_files: true
+    #     files: |
+    #       ./osx/*
+    #       ./linux/*
