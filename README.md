@@ -34,10 +34,10 @@ Steve Pitt
 * Dynamically adding new columns from a shell script output based on row data
 * Custom formatting for table rows
 * Automatically naming columns: col1, col2, col3 etc. if header is not specified.
+* Joining of multiple table inputs
 
 ## Planned Features
 
-* Joining of multiple table inputs
 * Sorting by a specified column
 * Showing only distinct data for a column
 * Reduce function
@@ -78,6 +78,12 @@ table in.csv --columns 'name,last_name'
 
 ```bash
 table in.csv --add 'echo "${cost} * ${amount}" | bc'
+```
+
+* Joining two CSV files by a common column. Joins on the column named 'id' in the first file that should match 'product_id' in the second file:
+
+```bash
+table file1.csv --join file2.csv --on 'id=product_id'
 ```
 
 ## Building from source

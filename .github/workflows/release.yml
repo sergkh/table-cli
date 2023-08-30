@@ -59,8 +59,6 @@ jobs:
       uses: montudor/action-zip@v1
       with:
         args: zip -qq -r linux.zip ./table
-    - name: Show files
-      run: ls -Rla .
     - name: Create GH release
       id: create_release
       uses: softprops/action-gh-release@v1
