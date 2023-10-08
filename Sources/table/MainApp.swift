@@ -103,7 +103,14 @@ struct MainApp: ParsableCommand {
 
         let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }
 
-        let newLine = "\n".data(using: .utf8)!        
+        let newLine = "\n".data(using: .utf8)!
+
+        if let columns {
+            let columns = columns.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            if (Global.debug) { print("Showing columns: \(columns.joined(separator: ","))") }
+            try columns.forEach { if table.header.index(ofColumn: $0) == nil { throw RuntimeError("Column \($0) is not found in the table") } }
+            table = ColumnsTableView(table: table, visibleColumns: columns)
+        }
 
         // when print format is set, header is not relevant anymore
         if !skipOutHeader && printFormat == nil {
