@@ -86,3 +86,30 @@ class NewColumnsTableView: Table {
     }
   }
 }
+
+/** Table view with filtered columns */
+class ColumnsTableView: Table {
+var table: any Table
+  let visibleColumns: [String]
+  let header: Header
+
+  init(table: any Table, visibleColumns: [String]) {
+    self.table = table
+    self.visibleColumns = visibleColumns
+    self.header = Header(components: visibleColumns)
+  }
+
+  func next() -> Row? {
+    let row = table.next()
+
+    if let row { 
+      return Row(
+        header: self.header, 
+        index: row.index, 
+        components: visibleColumns.map { col in row[col] ?? ""}
+      )
+    } else {
+      return nil
+    }
+  }
+}
