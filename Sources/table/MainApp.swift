@@ -5,6 +5,31 @@ struct Global {
     static var debug: Bool = false
 }
 
+func buildPrinter(formatOpt: Format?, outFileFmt: FileType, outputFile: String?) throws -> TablePrinter {    
+    let outHandle: FileHandle
+
+    if let outFile = outputFile {
+        if (!FileManager.default.createFile(atPath: outFile, contents: nil, attributes: nil)) {
+            throw RuntimeError("Unable to create output file \(outFile)")
+        }
+        outHandle = try FileHandle(forWritingAtPath: outFile).orThrow(RuntimeError("Output file \(outFile) is not found"))
+    } else {
+        outHandle = FileHandle.standardOutput
+    }
+    
+    if let formatOpt {
+        return CustomFormatTablePrinter(format: formatOpt, outHandle: outHandle)
+    }
+
+    if (outFileFmt == .table) {
+        return PrettyTablePrinter(outHandle: outHandle)
+    } else if (outFileFmt == .csv) {
+        return CsvTablePrinter(delimeter: ",", outHandle: outHandle)
+    } else {
+        throw RuntimeError("Unsupported output format \(outFileFmt)")
+    }
+}
+
 @main
 struct MainApp: ParsableCommand {
     static var configuration = CommandConfiguration(
@@ -54,6 +79,9 @@ struct MainApp: ParsableCommand {
     @Option(name: [.customLong("print")], help: "Format output accorindg to format string. Use ${column name} to print column value. Example: Column1 value is ${column1}.")
     var printFormat: String?
 
+    @Option(name: [.customLong("as")], help: "Prints output in the specified format. Supported formats: table (default) or csv.")
+    var asFormat: String? 
+
     // TODO: Support complex or multiple filters?
     @Option(name: .shortAndLong, help: "Filter rows by a single value criteria. Example: country=UA or size>10. Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains")
     var filter: String?
@@ -69,22 +97,12 @@ struct MainApp: ParsableCommand {
     var joinCriteria: String?
 
     mutating func run() throws {
-        let outHandle: FileHandle
-        
+                
         if debug {
             Global.debug = true
             print("Debug enabled")
         }
-
-        if let outFile = outputFile {
-            if (!FileManager.default.createFile(atPath: outFile, contents: nil, attributes: nil)) {
-                throw RuntimeError("Unable to create output file \(outFile)")
-            }
-            outHandle = try FileHandle(forWritingAtPath: outFile).orThrow(RuntimeError("Output file \(outFile) is not found"))
-        } else {
-            outHandle = FileHandle.standardOutput
-        }
-
+        
         let headerOverride = header.map { Header(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
         
         var table: any Table = try ParsedTable.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
@@ -103,8 +121,6 @@ struct MainApp: ParsableCommand {
 
         let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }
 
-        let newLine = "\n".data(using: .utf8)!
-
         if let columns {
             let columns = columns.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             if (Global.debug) { print("Showing columns: \(columns.joined(separator: ","))") }
@@ -112,16 +128,16 @@ struct MainApp: ParsableCommand {
             table = ColumnsTableView(table: table, visibleColumns: columns)
         }
 
+        let printer = try buildPrinter(formatOpt: formatOpt, outFileFmt: try FileType.outFormat(strFormat: asFormat), outputFile: outputFile)
+
         // when print format is set, header is not relevant anymore
-        if !skipOutHeader && printFormat == nil {
-            outHandle.write(table.header.asCsvData())
-            outHandle.write(newLine)
+        if !skipOutHeader {
+            printer.writeHeader(header: table.header)
         }
 
         var skip = skipLines ?? 0
         var limit = limitLines ?? Int.max
-
-        // for row: Row in table { TODO:
+        
         while let row = table.next() {
             if let filter {
                 if !filter.apply(row: row) { continue }
@@ -136,14 +152,11 @@ struct MainApp: ParsableCommand {
                 break 
             }
 
-            if let rowFormat = formatOpt {
-                outHandle.write(rowFormat.fillData(rows: [row]))
-            } else {                
-                outHandle.write(row.asCsvData())
-            }
-            
-            outHandle.write(newLine)
+            printer.writeRow(row: row)
+
             limit -= 1
         }
+
+        printer.flush()
     }
 }

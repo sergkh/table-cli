@@ -2,15 +2,15 @@ import Foundation
 
 class Row {
     let index: Int
-    var components: [String]
+    let components: [String]
     let header: Header?
 
     convenience init(header: Header?, index: Int, data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
         var components = data.components(separatedBy: delimeter)
-        
+
         if trim {
             components = components.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        }
+        }        
 
         if hasOuterBorders {
             components = components.dropFirst().dropLast()
@@ -22,7 +22,7 @@ class Row {
     init(header: Header?, index: Int, components: [String]) {
         self.header = header
         self.index = index
-        self.components = components   
+        self.components = components
     }
 
     subscript(index: Int) -> String {

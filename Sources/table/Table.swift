@@ -23,6 +23,8 @@ struct TableConfig {
 
 class ParsedTable: Table {    
     static let sqlHeaderPattern = "^[\\+-]{1,}$"
+    static let ownHeaderPattern = "^╭[\\┬─]{1,}╮$"
+    static let technicalRowPattern = "^[\\+-╭┬╮├┼┤─╰┴╯]{1,}$"
     var prereadRows: [String]
     let reader: LineReader
     let conf: TableConfig
@@ -54,7 +56,7 @@ class ParsedTable: Table {
 
         var row = nextLine()
         
-        while row?.matches(ParsedTable.sqlHeaderPattern) ?? false {
+        while technicalRow(row) {
             row = reader.readLine()
         }
         
@@ -65,8 +67,13 @@ class ParsedTable: Table {
                 data:row, 
                 delimeter: conf.delimeter, 
                 trim: conf.trim, 
-                hasOuterBorders: conf.type == .sql) 
+                hasOuterBorders: FileType.hasOuterBorders(type: conf.type)) 
         }
+    }
+
+    // matches rows that has to be skipped, usually horizontal delimeters
+    private func technicalRow(_ str: String?) -> Bool {
+        return str?.matches(ParsedTable.technicalRowPattern) ?? false
     }
 
     static func empty() -> ParsedTable {
@@ -99,16 +106,26 @@ class ParsedTable: Table {
     // TODO: has header is not yet used
     static func detectFile(reader: LineReader, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> (TableConfig, [String])? {
         if let row = reader.readLine() {
-            if row.matches(ParsedTable.sqlHeaderPattern) { // SQL table header used in MySQL/MariaDB like '+----+-------+'
+            if row.matches(ParsedTable.ownHeaderPattern) {
+                if (Global.debug) { print("Detected tool own table format") }
+                let parsedHeader = try reader.readLine().map { 
+                    Header(data: $0, delimeter: "│", trim: true, hasOuterBorders: true) 
+                }.orThrow(RuntimeError("Failed to parse own table header"))
+
+                return (TableConfig(header: headerOverride ?? parsedHeader, type: FileType.table, delimeter: "│", trim: true), [])
+            } else if row.matches(ParsedTable.sqlHeaderPattern) { // SQL table header used in MySQL/MariaDB like '+----+-------+'
+                if (Global.debug) { print("Detected SQL like table format") }
                 let parsedHeader = try reader.readLine().map { 
                     Header(data: $0, delimeter: "|", trim: true, hasOuterBorders: true) 
                 }.orThrow(RuntimeError("Failed to parse SQL like header"))
 
                 return (TableConfig(header: headerOverride ?? parsedHeader, type: FileType.sql, delimeter: "|", trim: true), [])
             } else if row.matches("^([A-Za-z_0-9\\s]+\\|\\s*)+[A-Za-z_0-9\\s]+$") { // Cassandra like header: name | name2 | name3
+                if (Global.debug) { print("Detected Cassandra like table format") }
                 let header = Header(data: row, delimeter: "|", trim: true, hasOuterBorders: false)
                 return (TableConfig(header: headerOverride ?? header, type: FileType.cassandraSql, delimeter: "|", trim: true), [])
-            } else { 
+            } else {
+                if (Global.debug) { print("Detected Cassandra like table format") }
                 let delimeters = delimeter.map{ [$0] } ?? [",", ";", "\t", " ", "|"]
 
                 // Pre-read up to 2 rows and apply delimeter to the header and rows.
@@ -126,11 +143,13 @@ class ParsedTable: Table {
 
                     if match {
                         let header: Header = (hasHeader ?? true) ? Header(data: row, delimeter: d, trim: false, hasOuterBorders: false) : Header.auto(size: 1) // TODO: ???
+                        if (Global.debug) { print("Detected as CSV format separated by '\(d)'") }
                         let cachedRows = (hasHeader ?? true) ? dataRows : ([row] + dataRows)
                         return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: d, trim: false), cachedRows)
                     }
                 }
 
+                if (Global.debug) { print("Detected as headless file") }
                 // Treat as a single line file
                 let header: Header = (hasHeader ?? true) ? Header(data: row, delimeter: delimeter ?? ",", trim: false, hasOuterBorders: false) : Header.auto(size: 1)
                 return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: delimeter ?? ",", trim: false), dataRows)          
