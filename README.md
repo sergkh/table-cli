@@ -18,6 +18,25 @@ If you have a SQL output like that
 
 you can easilly get a list of available only users:
 
+```bash
+$ table in.sql --filter available=1
+╭────┬────────────┬───────────┬───────────╮
+│ id │ first_name │ last_name │ available │
+├────┼────────────┼───────────┼───────────┤
+│ 1  │ John       │ Smith     │ 1         │
+│ 3  │ Steve      │ Pitt      │ 1         │
+│ 4  │ Mark       │ Cousins   │ 1         │
+...
+```
+
+Also in CSV form:
+
+```bash
+$ table in.sql --filter available=1 --as csv
+```
+
+Or in a custom text format:
+
 ```bash 
 $ table in.sql --print '${first_name} ${last_name}' --filter available=1
 John Smith
