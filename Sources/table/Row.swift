@@ -37,7 +37,17 @@ class Row {
         }
     }
 
-    func asCsvData() -> Data { 
-        components.joined(separator: ",").data(using: .utf8)! 
+    func compare(_ other: Row, column: String) throws -> ComparisonResult {
+        let left = try self[column].orThrow(RuntimeError("Unknown column \(column)"))
+        let right = try other[column].orThrow(RuntimeError("Unknown column \(column)"))
+        return compare(left, right)
+    }
+
+    private func compare(_ v1: String, _ v2: String) -> ComparisonResult {
+        if let v1Num = Int(v1), let v2Num = Int(v2) {
+            return NSNumber(value: v1Num).compare(NSNumber(value: v2Num))
+        } else {
+            return v1.compare(v2)
+        }    
     }
 }

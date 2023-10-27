@@ -39,10 +39,6 @@ class Header {
         cols.firstIndex(of: ofColumn)
     }
 
-    func asCsvData() -> Data { 
-        cols.joined(separator: ",").data(using: .utf8)! 
-    }
-
     func components() -> [String] {
       cols
     }

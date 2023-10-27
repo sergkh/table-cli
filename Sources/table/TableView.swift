@@ -16,7 +16,6 @@ class TableView: Table {
   func next() -> Row? {
     nil
   }
-
 }
 
 /** Joining table view */
@@ -89,7 +88,7 @@ class NewColumnsTableView: Table {
 
 /** Table view with filtered columns */
 class ColumnsTableView: Table {
-var table: any Table
+  var table: any Table
   let visibleColumns: [String]
   let header: Header
 
@@ -108,6 +107,66 @@ var table: any Table
         index: row.index, 
         components: visibleColumns.map { col in row[col] ?? ""}
       )
+    } else {
+      return nil
+    }
+  }
+}
+
+/** Table view fully loaded into memory */
+class InMemoryTableView: Table {
+  var table: any Table  
+  var header: Header { 
+    get {
+      return self.table.header
+    }
+  }
+
+  private var cursor: Int = 0
+  private var rows: [Row] = []
+  private var loaded = false
+
+  init(table: any Table) {
+    self.table = table
+  }
+
+  func load() {
+    if loaded {
+      return
+    }
+    
+    while let row = table.next() {
+      rows.append(row)
+    }
+
+    loaded = true
+  }
+
+  func sort(expr: Sort) throws -> any Table {
+    load()
+    
+    try rows.sort { (row1, row2) in
+      for (col, order) in expr.columns {
+        let cmp = try row1.compare(row2, column: col)
+        if cmp != .orderedSame {
+          return order == .desc ? cmp == .orderedDescending : cmp == .orderedAscending
+        }
+      }
+      return false
+    }
+
+    return self
+  }
+
+  func reset() {
+    cursor = 0
+  }
+
+  func next() -> Row? {
+    if cursor < rows.count {
+      let row = rows[cursor]
+      cursor += 1
+      return row
     } else {
       return nil
     }
