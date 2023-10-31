@@ -96,6 +96,9 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("on"), help: "Speficies column names to join on. Requires --join option. Syntax {table1 column}={table 2 column}. Example: --on city_id=id")
     var joinCriteria: String?
 
+    @Option(name: .customLong("sort"), help: "Sorts output by the specified columns. Example: --sort column1,column2. Use '!' prefix to sort in descending order.")
+    var sortColumns: String?
+
     mutating func run() throws {
                 
         if debug {
@@ -120,6 +123,14 @@ struct MainApp: ParsableCommand {
         }
 
         let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }
+
+        if let sortColumns {
+            let expression = try Sort(sortColumns).validated(header: table.header)
+            if (Global.debug) { 
+                print("Sorting by columns: \(expression.columns.map { (name, order) in "\(name) \(order)" }.joined(separator: ","))") 
+            }
+            table = try InMemoryTableView(table: table).sort(expr: expression)
+        }
 
         if let columns {
             let columns = columns.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
