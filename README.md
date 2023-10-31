@@ -105,6 +105,12 @@ table in.csv --add 'echo "${cost} * ${amount}" | bc'
 table file1.csv --join file2.csv --on 'id=product_id'
 ```
 
+* Sort columns first descending by the 'available' column and then ascending by the 'id' column:
+
+```bash
+table ./test-data/table-format.out --sort "!available,id"
+```
+
 ## Building from source
 
 ```bash
