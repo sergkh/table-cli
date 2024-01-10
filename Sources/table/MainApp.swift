@@ -88,7 +88,7 @@ struct MainApp: ParsableCommand {
 
     // TODO: Support adding more than one column?
     @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Example: --add 'curl http://email-db.com/${email}'.")
-    var addColumn: String?
+    var addColumns: [String] = []
 
     @Option(name: .customLong("join"), help: "Speficies a second file path to join with the current one. Joining column is the first one for both tables or can be specified by the --on option.")
     var joinFile: String?
@@ -112,10 +112,10 @@ struct MainApp: ParsableCommand {
         
         let filter = try filter.map { try Filter.compile(filter: $0, header: table.header) }
 
-        if let addColumn {
+        if !addColumns.isEmpty {
             // TODO: add support of Dynamic Row values and move validation right before rendering
-            let newColFormat = try Format(format: addColumn).validated(header: table.header)
-            table = NewColumnsTableView(table: table, additionalColumns: [("newColumn", newColFormat)])
+            let columns = try addColumns.enumerated().map { (index, element) in ("newColumn\(index + 1)", try Format(format: element).validated(header: table.header)) }
+            table = NewColumnsTableView(table: table, additionalColumns: columns)
         }
 
         if let joinFile {
