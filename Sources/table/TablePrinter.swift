@@ -44,7 +44,7 @@ class CustomFormatTablePrinter: TablePrinter {
   func writeHeader(header: Header) {}
 
   func writeRow(row: Row) {
-    self.outHandle.write(self.format.fillData(rows: [row]))
+    self.outHandle.write(self.format.fillData(row: row))
     self.outHandle.write(newLine)
   }
 

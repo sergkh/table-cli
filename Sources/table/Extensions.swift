@@ -13,6 +13,11 @@ extension String {
     func matches(_ regex: String) -> Bool {
         return self.range(of: regex, options: .regularExpression, range: nil, locale: nil) != nil
     }
+
+    var isNumber: Bool {
+        return self.matches("^-?[0-9]*$")
+    }
+
 }
 
 extension Array {

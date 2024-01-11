@@ -72,7 +72,7 @@ class NewColumnsTableView: Table {
 
     if let row {
       let newColumnsData = additionalColumns.map { (_, fmt) in
-        shell(fmt.fill(rows: [row]))
+        shell(fmt.fill(row: row))
       }
       
       return Row(
