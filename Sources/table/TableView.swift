@@ -38,12 +38,12 @@ class JoinTableView: Table {
     let row = table.next()
     if let row {
       let joinedRow = join.matching(row: row)
-      let joinedColumns = joinedRow.map{ $0.components } ?? [String](repeating: "", count: self.join.matchTable.header.size)
+      let joinedColumns = joinedRow.map{ $0.components } ?? [Cell](repeating: Cell(value: ""), count: self.join.matchTable.header.size)
 
       return Row(
         header: header, 
         index: row.index, 
-        components: row.components + joinedColumns
+        cells: row.components + joinedColumns
       )
     } else {
       return nil
@@ -72,13 +72,13 @@ class NewColumnsTableView: Table {
 
     if let row {
       let newColumnsData = additionalColumns.map { (_, fmt) in
-        shell(fmt.fill(row: row))
+        Cell(fn: { shell(fmt.fill(row: row)) })        
       }
       
       return Row(
         header: header, 
         index: row.index, 
-        components: row.components + newColumnsData
+        cells: row.components + newColumnsData
       )
     } else {
       return nil
@@ -110,6 +110,38 @@ class ColumnsTableView: Table {
     } else {
       return nil
     }
+  }
+}
+
+/** Table view with filtered rows to allow only distinct values for certain columns */
+class DistinctTableView: Table {
+  var table: any Table
+  let distinctColumns: [String]
+  let header: Header
+
+  private var distinctValues: Set<[String]> = []
+
+  init(table: any Table, distinctColumns: [String]) {
+    self.table = table
+    self.distinctColumns = distinctColumns
+    self.header = table.header
+  }
+
+  func next() -> Row? {
+    var row = table.next()
+
+    while let curRow = row {
+      let values = distinctColumns.map { col in curRow[col] ?? "" }
+      
+      if !distinctValues.contains(values) {
+        distinctValues.insert(values)
+        return row
+      }
+
+      row = table.next()
+    }
+    
+    return nil
   }
 }
 

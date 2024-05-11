@@ -82,11 +82,12 @@ class Format {
         }
 
         if name == "%values" {
-            return row.components.joined(separator: ",")
+            return row.components.map({ $0.value }).joined(separator: ",")
         }
 
         if name == "%quoted_values" {
-            return row.components.map { v in 
+            return row.components.map {
+                let v = $0.value
                 if v.caseInsensitiveCompare("true") == .orderedSame || 
                    v.caseInsensitiveCompare("false") == .orderedSame ||
                    v.caseInsensitiveCompare("null")  == .orderedSame || 
@@ -95,7 +96,7 @@ class Format {
                      return v
                    } else {
                      return "'\(v)'"
-                   }                    
+                   }
             }.joined(separator: ",")
         }
 

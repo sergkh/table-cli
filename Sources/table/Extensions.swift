@@ -30,3 +30,9 @@ extension Array {
         }        
     }
 }
+
+func debug(_ message: String) {
+    if Global.debug {
+        print(message)
+    }
+}
