@@ -2,7 +2,7 @@ import Foundation
 
 class Row {
     let index: Int
-    let components: [String]
+    let components: [Cell]
     let header: Header?
 
     convenience init(header: Header?, index: Int, data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
@@ -19,19 +19,23 @@ class Row {
         self.init(header: header, index: index, components: components)
     }
 
-    init(header: Header?, index: Int, components: [String]) {
+    convenience init(header: Header?, index: Int, components: [String]) {
+        self.init(header: header, index: index, cells: components.map { Cell(value: $0) })
+    }
+
+    init(header: Header?, index: Int, cells: [Cell]) {
         self.header = header
         self.index = index
-        self.components = components
+        self.components = cells
     }
 
     subscript(index: Int) -> String {
-        components[index]
+        components[index].value
     }
 
     subscript(columnName: String) -> String? {
         if let index = header?.index(ofColumn: columnName) {
-            return components[index]
+            return components[index].value
         } else {
             return nil
         }

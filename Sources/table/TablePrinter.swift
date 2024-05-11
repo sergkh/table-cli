@@ -19,12 +19,12 @@ class CsvTablePrinter: TablePrinter {
   }
 
   func writeHeader(header: Header) {
-    self.outHandle.write(header.cols.joined(separator: delimeter).data(using: .utf8)!)
+    self.outHandle.write(header.cols.map({ r in r.contains(delimeter) ? ("\"" + r + "\"") : r }).joined(separator: delimeter).data(using: .utf8)!)
     self.outHandle.write(newLine)
   }
 
   func writeRow(row: Row) {
-    self.outHandle.write(row.components.joined(separator: delimeter).data(using: .utf8)!)
+    self.outHandle.write(row.components.map({ r in r.value.contains(delimeter) ? ("\"" + r.value + "\"") : r.value }).joined(separator: delimeter).data(using: .utf8)!)
     self.outHandle.write(newLine)
   }
 
@@ -44,7 +44,7 @@ class CustomFormatTablePrinter: TablePrinter {
   func writeHeader(header: Header) {}
 
   func writeRow(row: Row) {
-    self.outHandle.write(self.format.fillData(rows: [row]))
+    self.outHandle.write(self.format.fillData(row: row))
     self.outHandle.write(newLine)
   }
 
@@ -68,7 +68,7 @@ class PrettyTablePrinter: TablePrinter {
 
   func writeRow(row: Row) {
     self.cachedRows.append(row)
-    self.adjustColumns(row: row.components)
+    self.adjustColumns(row: row.components.map{ $0.value })
   }
 
   func flush() {    
@@ -83,7 +83,7 @@ class PrettyTablePrinter: TablePrinter {
     }
 
     for row in self.cachedRows {
-      self.outHandle.write(formatRow(row.components).data(using: .utf8)!)
+      self.outHandle.write(formatRow(row.components.map{ $0.value }).data(using: .utf8)!)
     }
 
     let bottomBorder = "╰" + self.columnWidths.map( { String(repeating: "─", count: $0 + 2)}).joined(separator: "┴") + "╯\n"
@@ -96,7 +96,7 @@ class PrettyTablePrinter: TablePrinter {
     } else {
       
       if (row.count != self.columnWidths.count) {
-        fatalError("Row \(row) has irregular size. Table output is not possible, please use CSV format")
+        fatalError("Row \(row) has irregular size if \(row.count) columns, while expected \(self.columnWidths.count). Table output is not possible, please use CSV format")
       }
 
       for (i, col) in row.enumerated() {

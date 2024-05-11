@@ -83,17 +83,20 @@ struct MainApp: ParsableCommand {
     var asFormat: String? 
 
     // TODO: Support complex or multiple filters?
-    @Option(name: .shortAndLong, help: "Filter rows by a single value criteria. Example: country=UA or size>10. Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains")
+    @Option(name: .shortAndLong, help: "Filter rows by a single value criteria. Example: country=UA or size>10. Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains.")
     var filter: String?
 
     // TODO: Support adding more than one column?
     @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Example: --add 'curl http://email-db.com/${email}'.")
-    var addColumn: String?
+    var addColumns: [String] = []
+
+    @Option(name: .customLong("distinct"), help: "Returns only distinct values for the specified column set. Example: --distinct name,city_id.")
+    var distinctColumns: [String] = []
 
     @Option(name: .customLong("join"), help: "Speficies a second file path to join with the current one. Joining column is the first one for both tables or can be specified by the --on option.")
     var joinFile: String?
 
-    @Option(name: .customLong("on"), help: "Speficies column names to join on. Requires --join option. Syntax {table1 column}={table 2 column}. Example: --on city_id=id")
+    @Option(name: .customLong("on"), help: "Speficies column names to join on. Requires --join option. Syntax {table1 column}={table 2 column}. Example: --on city_id=id.")
     var joinCriteria: String?
 
     @Option(name: .customLong("sort"), help: "Sorts output by the specified columns. Example: --sort column1,column2. Use '!' prefix to sort in descending order.")
@@ -112,14 +115,19 @@ struct MainApp: ParsableCommand {
         
         let filter = try filter.map { try Filter.compile(filter: $0, header: table.header) }
 
-        if let addColumn {
+        if !addColumns.isEmpty {
             // TODO: add support of Dynamic Row values and move validation right before rendering
-            let newColFormat = try Format(format: addColumn).validated(header: table.header)
-            table = NewColumnsTableView(table: table, additionalColumns: [("newColumn", newColFormat)])
+            let columns = try addColumns.enumerated().map { (index, element) in ("newColumn\(index + 1)", try Format(format: element).validated(header: table.header)) }
+            table = NewColumnsTableView(table: table, additionalColumns: columns)
         }
 
         if let joinFile {
             table = JoinTableView(table: table, join: try Join.parse(joinFile, joinOn: joinCriteria, firstTable: table))
+        }
+
+        if !distinctColumns.isEmpty {
+            try distinctColumns.forEach { if table.header.index(ofColumn: $0) == nil { throw RuntimeError("Column \($0) in distinct clause is not found in the table") } }
+            table = DistinctTableView(table: table, distinctColumns: distinctColumns)
         }
 
         let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }
@@ -135,7 +143,7 @@ struct MainApp: ParsableCommand {
         if let columns {
             let columns = columns.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             if (Global.debug) { print("Showing columns: \(columns.joined(separator: ","))") }
-            try columns.forEach { if table.header.index(ofColumn: $0) == nil { throw RuntimeError("Column \($0) is not found in the table") } }
+            try columns.forEach { if table.header.index(ofColumn: $0) == nil { throw RuntimeError("Column \($0) in columns clause is not found in the table") } }
             table = ColumnsTableView(table: table, visibleColumns: columns)
         }
 

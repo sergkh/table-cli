@@ -54,12 +54,11 @@ Steve Pitt
 * Custom formatting for table rows
 * Automatically naming columns: col1, col2, col3 etc. if header is not specified.
 * Joining of multiple table inputs
+* Showing only distinct data for a column
+* Sorting by the specified columns
 
 ## Planned Features
-
-* Sorting by a specified column
-* Showing only distinct data for a column
-* Reduce function
+* Reduce functions
 
 # Available builds
 

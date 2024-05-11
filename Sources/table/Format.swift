@@ -1,7 +1,8 @@
 import Foundation
 
 class Format {
-    static let regex = try! NSRegularExpression(pattern: "\\$\\{([A-Za-z0-9_\\s]+)\\}")
+    static let regex = try! NSRegularExpression(pattern: "\\$\\{([%A-Za-z0-9_\\s]+)\\}")
+    static let internalVars = ["%header", "%values", "%quoted_values"]
     let format: String
     let matches: [NSTextCheckingResult]
     let parts: [String]
@@ -34,7 +35,7 @@ class Format {
     func validated(header: Header?) throws -> Format {
         if let h = header {
             for v in vars {
-                if h.index(ofColumn: v) == nil {
+                if h.index(ofColumn: v) == nil && !Format.internalVars.contains(v) {
                     throw RuntimeError("Unknown column in print format: \(v). Supported columns: \(h.columnsStr())")
                 }
             }
@@ -43,23 +44,14 @@ class Format {
         return self
     }
 
-    func columnValue(rows: [Row], name: String) -> String {
-        for r in rows {
-            if let v = r[name] {
-                return v
-            }
-        }
-        return ""
-    }
-
     // Format allows to specify initial column values as well as 
     // dynamically formed columns
-    func fill(rows: [Row]) -> String {
+    func fill(row: Row) -> String {
         var idx = 0
         var newStr = ""
 
         for v in vars {
-            newStr += parts[idx] + columnValue(rows: rows, name: v)
+            newStr += parts[idx] + columnValue(row: row, name: v)
             idx += 1
         }
 
@@ -68,7 +60,46 @@ class Format {
         return newStr
     }
 
-    func fillData(rows: [Row]) -> Data {
-        fill(rows: rows).data(using: .utf8)!
+    func fillData(row: Row) -> Data {
+        fill(row: row).data(using: .utf8)!
+    }
+
+    func columnValue(row: Row, name: String) -> String {
+        if let v = resolveInternalVariable(row, name) {
+            return v
+        }
+
+        if let v = row[name] {
+            return v
+        }
+
+        return ""
+    }
+
+    func resolveInternalVariable(_ row: Row, _ name: String) -> String? {
+        if name == "%header" {
+            return row.header?.columnsStr()
+        }
+
+        if name == "%values" {
+            return row.components.map({ $0.value }).joined(separator: ",")
+        }
+
+        if name == "%quoted_values" {
+            return row.components.map {
+                let v = $0.value
+                if v.caseInsensitiveCompare("true") == .orderedSame || 
+                   v.caseInsensitiveCompare("false") == .orderedSame ||
+                   v.caseInsensitiveCompare("null")  == .orderedSame || 
+                   v.isNumber
+                   {
+                     return v
+                   } else {
+                     return "'\(v)'"
+                   }
+            }.joined(separator: ",")
+        }
+
+        return nil
     }
 }

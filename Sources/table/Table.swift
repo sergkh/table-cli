@@ -59,6 +59,16 @@ class ParsedTable: Table {
         while technicalRow(row) {
             row = reader.readLine()
         }
+
+        if conf.type == .csv {
+            return row.map { row in 
+                Row(
+                    header: conf.header,
+                    index:line, 
+                    components: try! Csv.parseLine(row, delimeter: conf.delimeter)
+                ) 
+            }
+        } 
         
         return row.map { row in 
             Row(
@@ -133,23 +143,25 @@ class ParsedTable: Table {
                 let dataRows = [reader.readLine(), reader.readLine()].compactMap{$0}
 
                 for d in delimeters {
-                    let colsCount = row.components(separatedBy: d).count
+                    let colsCount = try Csv.parseLine(row, delimeter: d).count
 
                     if colsCount == 1 {
                         continue
                     }
-            
-                    let match = dataRows.allSatisfy { row in row.components(separatedBy: d).count == colsCount}
 
-                    if match {
+                    debug("Found delimeter '\(d)'")
+
+                    if try! dataRows.allSatisfy({ (try Csv.parseLine($0, delimeter: d).count) == colsCount}) {
                         let header: Header = (hasHeader ?? true) ? Header(data: row, delimeter: d, trim: false, hasOuterBorders: false) : Header.auto(size: 1) // TODO: ???
-                        if (Global.debug) { print("Detected as CSV format separated by '\(d)'") }
+                        if (Global.debug) { print("Detected as CSV format with header separated by '\(d)' with \(colsCount) columns") }
                         let cachedRows = (hasHeader ?? true) ? dataRows : ([row] + dataRows)
                         return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: d, trim: false), cachedRows)
+                    } else {
+                        debug("Columns count mismatch")
                     }
                 }
 
-                if (Global.debug) { print("Detected as headless file") }
+                debug("Detected as headless file")
                 // Treat as a single line file
                 let header: Header = (hasHeader ?? true) ? Header(data: row, delimeter: delimeter ?? ",", trim: false, hasOuterBorders: false) : Header.auto(size: 1)
                 return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: delimeter ?? ",", trim: false), dataRows)          
