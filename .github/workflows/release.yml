@@ -50,15 +50,19 @@ jobs:
     - name: Rename osx file
       run: bash -c 'mv ./release-binary-macos-latest/table ./table'
     - name: Zip osx file
-      uses: montudor/action-zip@v1
+      uses: a7ul/tar-action@v1.1.0
       with:
-        args: zip -qq -r osx.zip ./table
+        command: c
+        files: ./table
+        outPath: osx.tar.gz
     - name: Rename linux file
       run: bash -c 'rm -rf ./table && cp -r ./release-binary-ubuntu-latest/table ./table'
     - name: Zip linux file
-      uses: montudor/action-zip@v1
+      uses: a7ul/tar-action@v1.1.0
       with:
-        args: zip -qq -r linux.zip ./table
+        command: c
+        files: ./table
+        outPath: linux.tar.gz
     - name: Create GH release
       id: create_release
       uses: softprops/action-gh-release@v1
