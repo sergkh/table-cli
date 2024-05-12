@@ -25,6 +25,8 @@ jobs:
       run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table/Version.swift  
     - name: Build
       run: swift build -c release
+    - name: Debug out
+      run: ls -laR .build/
     - name: Upload linux artifact
       if: ${{ matrix.os == 'ubuntu-latest' }}
       uses: actions/upload-artifact@v3.1.0
