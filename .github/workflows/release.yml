@@ -75,5 +75,5 @@ jobs:
         generate_release_notes: true
         fail_on_unmatched_files: true
         files: |
-          ./linux.zip
-          ./osx.zip
+          ./linux.tar.gz
+          ./osx.tar.gz
