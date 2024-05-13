@@ -23,19 +23,38 @@ jobs:
       run: swift test        
     - name: Set version
       run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table/Version.swift  
-    - name: Build
-      run: swift build -c release --arch arm64 --arch x86_64
-    - name: List files
-      run: ls -la .build/
+    - name: Build Linux
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: swift build -c release
     - name: Rename file
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: bash -c 'mv .build/release/table ./table'
+    - name: Build OSX x86_64
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: swift build -c release --arch x86_64
+    - name: Rename x64 file
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: bash -c 'mv .build/x86_64-apple-macosx/release/table ./table'      
     - name: Zip osx file
       if: ${{ matrix.os == 'macos-latest' }}
       uses: a7ul/tar-action@v1.1.0
       with:
         command: c
         files: ./table
-        outPath: osx.tar.gz
+        outPath: osx_x86_64.tar.gz
+    - name: Build OSX arm64
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: swift build -c release --arch arm64
+    - name: Rename arm64 file
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: bash -c 'mv .build/arm64-apple-macosx/release/table ./table'      
+    - name: Zip osx file
+      if: ${{ matrix.os == 'macos-latest' }}
+      uses: a7ul/tar-action@v1.1.0
+      with:
+        command: c
+        files: ./table
+        outPath: osx_arm64.tar.gz
     - name: Zip linux file
       uses: a7ul/tar-action@v1.1.0
       with:
@@ -50,14 +69,16 @@ jobs:
         if-no-files-found: error
         retention-days: 1
         path: linux.tar.gz 
-    - name: Upload OSX artifact
+    - name: Upload OSX artifacts
       if: ${{ matrix.os == 'macos-latest' }}
       uses: actions/upload-artifact@v3.1.0
       with:
         name: release-binary-${{ matrix.os }}
         if-no-files-found: error
         retention-days: 1
-        path: osx.tar.gz
+        path: |
+          osx_arm64.tar.gz
+          osx_x86_64.tar.gz
   release:
     needs: build
     runs-on: ubuntu-latest
