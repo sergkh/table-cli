@@ -87,7 +87,7 @@ jobs:
     - name: Download artifact
       uses: actions/download-artifact@v3
     - name: List files
-      run: ls
+      run: ls -R
     - name: Create GH release
       id: create_release
       uses: softprops/action-gh-release@v1
@@ -98,6 +98,6 @@ jobs:
         generate_release_notes: true
         fail_on_unmatched_files: true
         files: |
-          ./linux.tar.gz
-          ./osx_arm64.tar.gz
-          ./osx_x86_64.tar.gz
+          ./release-binary-ubuntu-latest/linux.tar.gz
+          ./release-binary-macos-latest/osx_arm64.tar.gz
+          ./release-binary-macos-latest/osx_x86_64.tar.gz
