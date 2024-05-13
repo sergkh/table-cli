@@ -35,7 +35,7 @@ jobs:
     - name: Rename x64 file
       if: ${{ matrix.os == 'macos-latest' }}
       run: bash -c 'mv .build/x86_64-apple-macosx/release/table ./table'      
-    - name: Zip osx file
+    - name: Tar osx x86 file
       if: ${{ matrix.os == 'macos-latest' }}
       uses: a7ul/tar-action@v1.1.0
       with:
@@ -48,14 +48,15 @@ jobs:
     - name: Rename arm64 file
       if: ${{ matrix.os == 'macos-latest' }}
       run: bash -c 'mv .build/arm64-apple-macosx/release/table ./table'      
-    - name: Zip osx file
+    - name: Tar osx ARM file
       if: ${{ matrix.os == 'macos-latest' }}
       uses: a7ul/tar-action@v1.1.0
       with:
         command: c
         files: ./table
         outPath: osx_arm64.tar.gz
-    - name: Zip linux file
+    - name: Tar linux file
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       uses: a7ul/tar-action@v1.1.0
       with:
         command: c
@@ -85,6 +86,8 @@ jobs:
     steps:
     - name: Download artifact
       uses: actions/download-artifact@v3
+    - name: List files
+      run: ls
     - name: Create GH release
       id: create_release
       uses: softprops/action-gh-release@v1
@@ -96,4 +99,5 @@ jobs:
         fail_on_unmatched_files: true
         files: |
           ./linux.tar.gz
-          ./osx.tar.gz
+          ./osx_arm64.tar.gz
+          ./osx_x86_64.tar.gz
