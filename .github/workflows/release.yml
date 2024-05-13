@@ -42,7 +42,7 @@ jobs:
         name: release-binary-${{ matrix.os }}
         if-no-files-found: error
         retention-days: 1
-        path: .build/x86_64-apple-macosx/release/table
+        path: .build/release/table
   release:
     needs: build
     runs-on: ubuntu-latest
