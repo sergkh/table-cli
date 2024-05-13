@@ -60,6 +60,14 @@ Steve Pitt
 ## Planned Features
 * Reduce functions
 
+# Installation
+
+Using homebrew on OSX or Linux: 
+```bash
+$ brew tap sergkh/tap
+$ brew install table-cli
+```
+
 # Available builds
 
 Currently tool is built for OSX (both Intel and Apple silicon) and Linux.
