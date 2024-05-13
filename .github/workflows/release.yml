@@ -26,7 +26,7 @@ jobs:
     - name: Build
       run: swift build -c release --arch arm64 --arch x86_64
     - name: List files
-      run: ls -la .build/release
+      run: ls -la .build/
     - name: Rename file
       run: bash -c 'mv .build/release/table ./table'
     - name: Zip osx file
