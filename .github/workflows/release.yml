@@ -24,11 +24,9 @@ jobs:
     - name: Set version
       run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table/Version.swift  
     - name: Build
-      run: swift build -c release
+      run: swift build -c release --arch arm64 --arch x86_64
     - name: Rename file      
       run: bash -c 'mv .build/release/table ./table'      
-    - name: Debug out
-      run: ls -la .
     - name: Zip osx file
       if: ${{ matrix.os == 'macos-latest' }}
       uses: a7ul/tar-action@v1.1.0
@@ -42,8 +40,6 @@ jobs:
         command: c
         files: ./table
         outPath: linux.tar.gz
-    - name: Debug out 2
-      run: ls -la .        
     - name: Upload linux artifact
       if: ${{ matrix.os == 'ubuntu-latest' }}
       uses: actions/upload-artifact@v3.1.0
@@ -65,17 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Download artifact
-      uses: actions/download-artifact@v3  
-    - name: Rename osx file
-      run: bash -c 'mv ./release-binary-macos-latest/table ./table'
-    - name: Zip osx file
-      uses: a7ul/tar-action@v1.1.0
-      with:
-        command: c
-        files: ./table
-        outPath: osx.tar.gz
-    - name: Rename linux file
-      run: bash -c 'rm -rf ./table && cp -r ./release-binary-ubuntu-latest/table ./table'
+      uses: actions/download-artifact@v3
     - name: Create GH release
       id: create_release
       uses: softprops/action-gh-release@v1
