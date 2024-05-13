@@ -23,8 +23,45 @@ jobs:
       run: swift test        
     - name: Set version
       run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table/Version.swift  
-    - name: Build
+    - name: Build Linux
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: swift build -c release
+    - name: Rename file
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: bash -c 'mv .build/release/table ./table'
+    - name: Build OSX x86_64
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: swift build -c release --arch x86_64
+    - name: Rename x64 file
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: bash -c 'mv .build/x86_64-apple-macosx/release/table ./table'      
+    - name: Tar osx x86 file
+      if: ${{ matrix.os == 'macos-latest' }}
+      uses: a7ul/tar-action@v1.1.0
+      with:
+        command: c
+        files: ./table
+        outPath: osx_x86_64.tar.gz
+    - name: Build OSX arm64
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: swift build -c release --arch arm64
+    - name: Rename arm64 file
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: bash -c 'mv .build/arm64-apple-macosx/release/table ./table'      
+    - name: Tar osx ARM file
+      if: ${{ matrix.os == 'macos-latest' }}
+      uses: a7ul/tar-action@v1.1.0
+      with:
+        command: c
+        files: ./table
+        outPath: osx_arm64.tar.gz
+    - name: Tar linux file
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      uses: a7ul/tar-action@v1.1.0
+      with:
+        command: c
+        files: ./table
+        outPath: linux.tar.gz
     - name: Upload linux artifact
       if: ${{ matrix.os == 'ubuntu-latest' }}
       uses: actions/upload-artifact@v3.1.0
@@ -32,37 +69,25 @@ jobs:
         name: release-binary-${{ matrix.os }}
         if-no-files-found: error
         retention-days: 1
-        path: .build/x86_64-unknown-linux-gnu/release/table     
-    - name: Upload OSX artifact
+        path: linux.tar.gz 
+    - name: Upload OSX artifacts
       if: ${{ matrix.os == 'macos-latest' }}
       uses: actions/upload-artifact@v3.1.0
       with:
         name: release-binary-${{ matrix.os }}
         if-no-files-found: error
         retention-days: 1
-        path: .build/x86_64-apple-macosx/release/table
+        path: |
+          osx_arm64.tar.gz
+          osx_x86_64.tar.gz
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
     - name: Download artifact
-      uses: actions/download-artifact@v3  
-    - name: Rename osx file
-      run: bash -c 'mv ./release-binary-macos-latest/table ./table'
-    - name: Zip osx file
-      uses: a7ul/tar-action@v1.1.0
-      with:
-        command: c
-        files: ./table
-        outPath: osx.tar.gz
-    - name: Rename linux file
-      run: bash -c 'rm -rf ./table && cp -r ./release-binary-ubuntu-latest/table ./table'
-    - name: Zip linux file
-      uses: a7ul/tar-action@v1.1.0
-      with:
-        command: c
-        files: ./table
-        outPath: linux.tar.gz
+      uses: actions/download-artifact@v3
+    - name: List files
+      run: ls -R
     - name: Create GH release
       id: create_release
       uses: softprops/action-gh-release@v1
@@ -73,5 +98,6 @@ jobs:
         generate_release_notes: true
         fail_on_unmatched_files: true
         files: |
-          ./linux.zip
-          ./osx.zip
+          ./release-binary-ubuntu-latest/linux.tar.gz
+          ./release-binary-macos-latest/osx_arm64.tar.gz
+          ./release-binary-macos-latest/osx_x86_64.tar.gz
