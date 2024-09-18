@@ -135,13 +135,48 @@ class DistinctTableView: Table {
       
       if !distinctValues.contains(values) {
         distinctValues.insert(values)
-        return row
+        return curRow
       }
 
       row = table.next()
     }
     
     return nil
+  }
+}
+
+/** Table view that have randomized sample of the rows. */
+class SampledTableView: Table {
+  var table: any Table
+  let percentage: Int
+  let header: Header
+
+  init(table: any Table, percentage: Int) {
+    self.table = table
+    self.percentage = percentage
+    self.header = table.header
+  }
+  
+  func next() -> Row? {    
+    var row = table.next()
+
+    while let curRow = row {
+      let useRow = sample()
+      
+      print("Sampled row: \(useRow)")
+
+      if useRow {
+        return curRow
+      }
+
+      row = table.next()
+    }
+    
+    return nil
+  }
+
+  private func sample() -> Bool {
+    return Int.random(in: 0...100) < percentage
   }
 }
 

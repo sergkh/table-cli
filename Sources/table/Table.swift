@@ -22,9 +22,9 @@ struct TableConfig {
 }
 
 class ParsedTable: Table {    
-    static let sqlHeaderPattern = "^[\\+-]{1,}$"
+    static let sqlHeaderPattern = "^[\\+\\-]{1,}$"
     static let ownHeaderPattern = "^╭[\\┬─]{1,}╮$"
-    static let technicalRowPattern = "^[\\+-╭┬╮├┼┤─╰┴╯]{1,}$"
+    static let technicalRowPattern = "^[\\+\\-╭┬╮├┼┤─╰┴╯]{1,}$"
     var prereadRows: [String]
     let reader: LineReader
     let conf: TableConfig
@@ -55,7 +55,7 @@ class ParsedTable: Table {
         line += 1
 
         var row = nextLine()
-        
+
         while technicalRow(row) {
             row = reader.readLine()
         }
@@ -87,7 +87,12 @@ class ParsedTable: Table {
     }
 
     static func empty() -> ParsedTable {
-        ParsedTable(reader: ArrayLineReader([]), conf: TableConfig(header: Header.auto(size: 0)), prereadRows: [])
+        return ParsedTable(reader: ArrayLineReader(lines: []), conf: TableConfig(header: Header.auto(size: 0)), prereadRows: [])
+    }
+
+    static func fromArray(_ data: [[String]], header: [String]? = nil) -> ParsedTable {
+        let parsedHeader = header.map { Header(components: $0) } ?? Header.auto(size: data.count)
+        return ParsedTable(reader: ArrayLineReader(components: data), conf: TableConfig(header: parsedHeader), prereadRows: [])
     }
 
     static func parse(path: String?, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> ParsedTable {
@@ -135,7 +140,7 @@ class ParsedTable: Table {
                 let header = Header(data: row, delimeter: "|", trim: true, hasOuterBorders: false)
                 return (TableConfig(header: headerOverride ?? header, type: FileType.cassandraSql, delimeter: "|", trim: true), [])
             } else {
-                if (Global.debug) { print("Detected Cassandra like table format") }
+                if (Global.debug) { print("Detected CSV like table format") }
                 let delimeters = delimeter.map{ [$0] } ?? [",", ";", "\t", " ", "|"]
 
                 // Pre-read up to 2 rows and apply delimeter to the header and rows.
@@ -153,7 +158,7 @@ class ParsedTable: Table {
 
                     if try! dataRows.allSatisfy({ (try Csv.parseLine($0, delimeter: d).count) == colsCount}) {
                         let header: Header = (hasHeader ?? true) ? Header(data: row, delimeter: d, trim: false, hasOuterBorders: false) : Header.auto(size: 1) // TODO: ???
-                        if (Global.debug) { print("Detected as CSV format with header separated by '\(d)' with \(colsCount) columns") }
+                        debug("Detected as CSV format with header separated by '\(d)' with \(colsCount) columns")
                         let cachedRows = (hasHeader ?? true) ? dataRows : ([row] + dataRows)
                         return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: d, trim: false), cachedRows)
                     } else {

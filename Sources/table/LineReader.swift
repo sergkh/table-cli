@@ -54,8 +54,12 @@ class ArrayLineReader: LineReader {
     private var index = 0
     let lines: [String]
 
-    init(_ lines: [String] = []) {
+    init(lines: [String] = []) {
         self.lines = lines    
+    }
+
+    init(components: [[String]]) {
+        self.lines = components.map { $0.joined(separator: ",") }
     }
 
     func readLine() -> String? {
