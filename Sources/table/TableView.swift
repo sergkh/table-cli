@@ -1,23 +1,5 @@
 import Foundation
 
-// Transforms each header or row.
-// Currently supported transformations: 
-// * Column projections
-// * Adding new dynamic columns
-class TableView: Table {
-  let table: any Table
-  let header: Header
-
-  init(table: any Table) {
-    self.table = table
-    self.header = table.header
-  }
-
-  func next() -> Row? {
-    nil
-  }
-}
-
 /** Joining table view */
 class JoinTableView: Table {
   var table: any Table
@@ -135,7 +117,7 @@ class DistinctTableView: Table {
       
       if !distinctValues.contains(values) {
         distinctValues.insert(values)
-        return row
+        return curRow
       }
 
       row = table.next()
@@ -145,8 +127,41 @@ class DistinctTableView: Table {
   }
 }
 
+/** Table view that have randomized sample of the rows. */
+class SampledTableView: Table {
+  var table: any Table
+  let percentage: Int
+  let header: Header
+
+  init(table: any Table, percentage: Int) {
+    self.table = table
+    self.percentage = percentage
+    self.header = table.header
+  }
+  
+  func next() -> Row? {    
+    var row = table.next()
+
+    while let curRow = row {
+      let useRow = sample()
+
+      if useRow {
+        return curRow
+      }
+
+      row = table.next()
+    }
+    
+    return nil
+  }
+
+  private func sample() -> Bool {
+    return Int.random(in: 0...100) < percentage
+  }
+}
+
 /** Table view fully loaded into memory */
-class InMemoryTableView: Table {
+class InMemoryTableView: InMemoryTable {
   var table: any Table  
   var header: Header { 
     get {
@@ -190,7 +205,7 @@ class InMemoryTableView: Table {
     return self
   }
 
-  func reset() {
+  func rewind() {
     cursor = 0
   }
 

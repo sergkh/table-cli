@@ -2,7 +2,11 @@ import Foundation
 
 protocol Table: Sequence<Row>, IteratorProtocol<Row> {
     var header: Header { get }
-    mutating func next() -> Row? // TODO: remove me
+    mutating func next() -> Row?
+}
+
+protocol InMemoryTable: Table {
+    func rewind()
 }
 
 struct TableConfig {
@@ -22,9 +26,9 @@ struct TableConfig {
 }
 
 class ParsedTable: Table {    
-    static let sqlHeaderPattern = "^[\\+-]{1,}$"
+    static let sqlHeaderPattern = "^[\\+\\-]{1,}$"
     static let ownHeaderPattern = "^╭[\\┬─]{1,}╮$"
-    static let technicalRowPattern = "^[\\+-╭┬╮├┼┤─╰┴╯]{1,}$"
+    static let technicalRowPattern = "^[\\+\\-╭┬╮├┼┤─╰┴╯]{1,}$"
     var prereadRows: [String]
     let reader: LineReader
     let conf: TableConfig
@@ -41,7 +45,7 @@ class ParsedTable: Table {
 
     deinit {
         reader.close()
-    }    
+    }
 
     func nextLine() -> String? {
         if (prereadRows.isEmpty) {
@@ -55,7 +59,7 @@ class ParsedTable: Table {
         line += 1
 
         var row = nextLine()
-        
+
         while technicalRow(row) {
             row = reader.readLine()
         }
@@ -87,7 +91,12 @@ class ParsedTable: Table {
     }
 
     static func empty() -> ParsedTable {
-        ParsedTable(reader: ArrayLineReader([]), conf: TableConfig(header: Header.auto(size: 0)), prereadRows: [])
+        return ParsedTable(reader: ArrayLineReader(lines: []), conf: TableConfig(header: Header.auto(size: 0)), prereadRows: [])
+    }
+
+    static func fromArray(_ data: [[String]], header: [String]? = nil) -> ParsedTable {
+        let parsedHeader = header.map { Header(components: $0) } ?? Header.auto(size: data.count)
+        return ParsedTable(reader: ArrayLineReader(components: data), conf: TableConfig(header: parsedHeader), prereadRows: [])
     }
 
     static func parse(path: String?, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> ParsedTable {
@@ -119,23 +128,23 @@ class ParsedTable: Table {
             if row.matches(ParsedTable.ownHeaderPattern) {
                 if (Global.debug) { print("Detected tool own table format") }
                 let parsedHeader = try reader.readLine().map { 
-                    Header(data: $0, delimeter: "│", trim: true, hasOuterBorders: true) 
+                    try! Header(data: $0, delimeter: "│", trim: true, hasOuterBorders: true) 
                 }.orThrow(RuntimeError("Failed to parse own table header"))
 
                 return (TableConfig(header: headerOverride ?? parsedHeader, type: FileType.table, delimeter: "│", trim: true), [])
             } else if row.matches(ParsedTable.sqlHeaderPattern) { // SQL table header used in MySQL/MariaDB like '+----+-------+'
                 if (Global.debug) { print("Detected SQL like table format") }
                 let parsedHeader = try reader.readLine().map { 
-                    Header(data: $0, delimeter: "|", trim: true, hasOuterBorders: true) 
+                    try! Header(data: $0, delimeter: "|", trim: true, hasOuterBorders: true) 
                 }.orThrow(RuntimeError("Failed to parse SQL like header"))
 
                 return (TableConfig(header: headerOverride ?? parsedHeader, type: FileType.sql, delimeter: "|", trim: true), [])
             } else if row.matches("^([A-Za-z_0-9\\s]+\\|\\s*)+[A-Za-z_0-9\\s]+$") { // Cassandra like header: name | name2 | name3
                 if (Global.debug) { print("Detected Cassandra like table format") }
-                let header = Header(data: row, delimeter: "|", trim: true, hasOuterBorders: false)
+                let header = try! Header(data: row, delimeter: "|", trim: true, hasOuterBorders: false)
                 return (TableConfig(header: headerOverride ?? header, type: FileType.cassandraSql, delimeter: "|", trim: true), [])
             } else {
-                if (Global.debug) { print("Detected Cassandra like table format") }
+                if (Global.debug) { print("Detected CSV like table format") }
                 let delimeters = delimeter.map{ [$0] } ?? [",", ";", "\t", " ", "|"]
 
                 // Pre-read up to 2 rows and apply delimeter to the header and rows.
@@ -152,8 +161,8 @@ class ParsedTable: Table {
                     debug("Found delimeter '\(d)'")
 
                     if try! dataRows.allSatisfy({ (try Csv.parseLine($0, delimeter: d).count) == colsCount}) {
-                        let header: Header = (hasHeader ?? true) ? Header(data: row, delimeter: d, trim: false, hasOuterBorders: false) : Header.auto(size: 1) // TODO: ???
-                        if (Global.debug) { print("Detected as CSV format with header separated by '\(d)' with \(colsCount) columns") }
+                        let header: Header = try! (hasHeader ?? true) ? Header(data: row, delimeter: d, trim: false, hasOuterBorders: false) : Header.auto(size: 1)
+                        debug("Detected as CSV format with header separated by '\(d)' with \(colsCount) columns")
                         let cachedRows = (hasHeader ?? true) ? dataRows : ([row] + dataRows)
                         return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: d, trim: false), cachedRows)
                     } else {
@@ -163,7 +172,7 @@ class ParsedTable: Table {
 
                 debug("Detected as headless file")
                 // Treat as a single line file
-                let header: Header = (hasHeader ?? true) ? Header(data: row, delimeter: delimeter ?? ",", trim: false, hasOuterBorders: false) : Header.auto(size: 1)
+                let header: Header = (hasHeader ?? true) ? try! Header(data: row, delimeter: delimeter ?? ",", trim: false, hasOuterBorders: false) : Header.auto(size: 1)
                 return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: delimeter ?? ",", trim: false), dataRows)          
             }
         } else {

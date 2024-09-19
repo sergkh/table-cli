@@ -31,6 +31,16 @@ extension Array {
     }
 }
 
+extension Table {
+    func memoized() -> any Table {
+        if self is InMemoryTableView {
+            return self
+        } else {
+            return InMemoryTableView(table: self)
+        }
+    }
+}
+
 func debug(_ message: String) {
     if Global.debug {
         print(message)

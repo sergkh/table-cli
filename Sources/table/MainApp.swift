@@ -102,6 +102,9 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("sort"), help: "Sorts output by the specified columns. Example: --sort column1,column2. Use '!' prefix to sort in descending order.")
     var sortColumns: String?
 
+    @Option(name: .customLong("sample"), help: "Samples percentage of the total rows. Example: --sample 50. Samples only half of the rows.")
+    var sample: Int?
+
     mutating func run() throws {
                 
         if debug {
@@ -109,7 +112,7 @@ struct MainApp: ParsableCommand {
             print("Debug enabled")
         }
         
-        let headerOverride = header.map { Header(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
+        let headerOverride = header.map { try! Header(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
         
         var table: any Table = try ParsedTable.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
         
@@ -145,6 +148,11 @@ struct MainApp: ParsableCommand {
             if (Global.debug) { print("Showing columns: \(columns.joined(separator: ","))") }
             try columns.forEach { if table.header.index(ofColumn: $0) == nil { throw RuntimeError("Column \($0) in columns clause is not found in the table") } }
             table = ColumnsTableView(table: table, visibleColumns: columns)
+        }
+
+        if let sample {
+            if (Global.debug) { print("Sampling \(sample)% of the rows") }
+            table = SampledTableView(table: table, percentage: sample)
         }
 
         let printer = try buildPrinter(formatOpt: formatOpt, outFileFmt: try FileType.outFormat(strFormat: asFormat), outputFile: outputFile)
