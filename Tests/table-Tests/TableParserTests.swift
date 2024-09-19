@@ -17,9 +17,18 @@ class TableParserTests: XCTestCase {
     }
 
     // TODO: fix in accordance to https://www.rfc-editor.org/rfc/rfc4180
-    // func testRespectDelimeter() throws {
-    //     let oneLineTable = try Table.parse(reader: ArrayLineReader([ "Column,1; Column2" ]), hasHeader: nil, headerOverride: nil, delimeter: ";")
-    //     XCTAssertEqual(oneLineTable.header.columnsStr(), "\"Column,1\",Column2")
-    //     XCTAssertNil(oneLineTable.next())
-    // }
+    func testRespectDelimeter() throws {
+        let table = try ParsedTable.parse(reader: ArrayLineReader(lines: [
+            "\"Column,1\",\"Column,2\"",
+            "\"Val,1\",\"Val,2\""
+        ]), hasHeader: nil, headerOverride: nil, delimeter: ",")
+        XCTAssertEqual(table.header.components()[0], "Column,1")
+        XCTAssertEqual(table.header.components()[1], "Column,2")
+        
+        let row = table.next()!
+        
+        XCTAssertEqual(row.components[0].value, "Val,1")
+        XCTAssertEqual(row.components[1].value, "Val,2")
+
+    }
 }

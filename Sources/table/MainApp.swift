@@ -112,7 +112,7 @@ struct MainApp: ParsableCommand {
             print("Debug enabled")
         }
         
-        let headerOverride = header.map { Header(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
+        let headerOverride = header.map { try! Header(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
         
         var table: any Table = try ParsedTable.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
         

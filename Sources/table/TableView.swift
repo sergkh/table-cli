@@ -1,23 +1,5 @@
 import Foundation
 
-// Transforms each header or row.
-// Currently supported transformations: 
-// * Column projections
-// * Adding new dynamic columns
-class TableView: Table {
-  let table: any Table
-  let header: Header
-
-  init(table: any Table) {
-    self.table = table
-    self.header = table.header
-  }
-
-  func next() -> Row? {
-    nil
-  }
-}
-
 /** Joining table view */
 class JoinTableView: Table {
   var table: any Table
@@ -162,8 +144,6 @@ class SampledTableView: Table {
 
     while let curRow = row {
       let useRow = sample()
-      
-      print("Sampled row: \(useRow)")
 
       if useRow {
         return curRow
@@ -181,7 +161,7 @@ class SampledTableView: Table {
 }
 
 /** Table view fully loaded into memory */
-class InMemoryTableView: Table {
+class InMemoryTableView: InMemoryTable {
   var table: any Table  
   var header: Header { 
     get {
@@ -225,7 +205,7 @@ class InMemoryTableView: Table {
     return self
   }
 
-  func reset() {
+  func rewind() {
     cursor = 0
   }
 

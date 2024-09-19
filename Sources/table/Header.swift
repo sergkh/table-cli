@@ -4,8 +4,8 @@ class Header {
     let cols: [String]
     let size: Int 
 
-    convenience init(data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
-      var components = data.components(separatedBy: delimeter)
+    convenience init(data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) throws {
+      var components = try Csv.parseLine(data, delimeter: delimeter)
       
       if trim {
           components = components.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
