@@ -2,7 +2,7 @@ import XCTest
 @testable import table
 
 class FilterTests: XCTestCase {
-    let header = Header(components: ["col1", "col2"])
+    let header = Header(components: ["col1", "col2"], types: [.string, .string])
 
     func testComparesNumbersCorrectly() throws {        
         let filter = try Filter.compile(filter: "col1 > 12", header: header)

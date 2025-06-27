@@ -60,46 +60,32 @@ class ParsedTable: Table {
 
         var row = nextLine()
 
-        while technicalRow(row) {
+        while ParsedTable.technicalRow(row) {
             row = reader.readLine()
         }
 
-        if conf.type == .csv {
-            return row.map { row in 
-                Row(
-                    header: conf.header,
-                    index:line, 
-                    components: try! Csv.parseLine(row, delimeter: conf.delimeter)
-                ) 
-            }
-        } 
-        
-        return row.map { row in 
-            Row(
+        return try! row.map { row in 
+            let components = try ParsedTable.readRowComponents(row, type: conf.type, delimeter: conf.delimeter, trim: conf.trim, hasOuterBorders: FileType.hasOuterBorders(type: conf.type))
+
+            return Row(
                 header: conf.header,
                 index:line, 
-                data:row, 
-                delimeter: conf.delimeter, 
-                trim: conf.trim, 
-                hasOuterBorders: FileType.hasOuterBorders(type: conf.type)) 
+                components: components
+            ) 
         }
-    }
-
-    // matches rows that has to be skipped, usually horizontal delimeters
-    private func technicalRow(_ str: String?) -> Bool {
-        return str?.matches(ParsedTable.technicalRowPattern) ?? false
-    }
+    } 
 
     static func empty() -> ParsedTable {
         return ParsedTable(reader: ArrayLineReader(lines: []), conf: TableConfig(header: Header.auto(size: 0)), prereadRows: [])
     }
 
     static func fromArray(_ data: [[String]], header: [String]? = nil) -> ParsedTable {
-        let parsedHeader = header.map { Header(components: $0) } ?? Header.auto(size: data.count)
+        let types = CellType.infer(rows: data)
+        let parsedHeader = header.map { Header(components: $0, types: types) } ?? Header.auto(size: data.count)        
         return ParsedTable(reader: ArrayLineReader(components: data), conf: TableConfig(header: parsedHeader), prereadRows: [])
     }
 
-    static func parse(path: String?, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> ParsedTable {
+    static func parse(path: String?, hasHeader: Bool?, headerOverride: Header?, delimeter: String?, userTypes: [CellType]?) throws -> ParsedTable {
         let file: FileHandle?
         
         if let path {
@@ -108,11 +94,11 @@ class ParsedTable: Table {
             file = FileHandle.standardInput
         }    
 
-        return try parse(reader: FileLineReader(fileHandle: file!), hasHeader: hasHeader, headerOverride: headerOverride, delimeter: delimeter)
+        return try parse(reader: FileLineReader(fileHandle: file!), hasHeader: hasHeader, headerOverride: headerOverride, delimeter: delimeter, userTypes: userTypes)
     }
 
-    static func parse(reader: LineReader, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> ParsedTable {       
-        if let (conf, prereadRows) = try ParsedTable.detectFile(reader:reader, hasHeader:hasHeader, headerOverride: headerOverride, delimeter: delimeter) {
+    static func parse(reader: LineReader, hasHeader: Bool?, headerOverride: Header? = nil, delimeter: String? = nil, userTypes: [CellType]? = nil) throws -> ParsedTable {       
+        if let (conf, prereadRows) = try ParsedTable.detectFile(reader:reader, hasHeader:hasHeader, headerOverride: headerOverride, delimeter: delimeter, userTypes: userTypes) {
             return ParsedTable(reader: reader, conf: conf, prereadRows: prereadRows)
         } else {
             return ParsedTable.empty()
@@ -123,28 +109,41 @@ class ParsedTable: Table {
     // Returns header (if present), file type, column delimeter and list of pre-read rows
     // Pre-read rows necessary for standard input where we can't rewind file back
     // TODO: has header is not yet used
-    static func detectFile(reader: LineReader, hasHeader: Bool?, headerOverride: Header?, delimeter: String?) throws -> (TableConfig, [String])? {
+    static func detectFile(reader: LineReader, hasHeader: Bool?, headerOverride: Header?, delimeter: String?, userTypes: [CellType]?) throws -> (TableConfig, [String])? {
         if let row = reader.readLine() {
             if row.matches(ParsedTable.ownHeaderPattern) {
-                if (Global.debug) { print("Detected tool own table format") }
+                debug("Detected tool own table format")
                 let parsedHeader = try reader.readLine().map { 
                     try! Header(data: $0, delimeter: "│", trim: true, hasOuterBorders: true) 
                 }.orThrow(RuntimeError("Failed to parse own table header"))
 
-                return (TableConfig(header: headerOverride ?? parsedHeader, type: FileType.table, delimeter: "│", trim: true), [])
+                let dataRows = [reader.readLine(), reader.readLine(), reader.readLine()].compactMap{$0}.filter { !ParsedTable.technicalRow($0) }
+                let types = userTypes ?? CellType.infer(rows: dataRows.map { try! ParsedTable.readRowComponents($0, type: .cassandraSql, delimeter: "|", trim: true) })
+                let header = (headerOverride ?? parsedHeader).withTypes(types)
+
+                return (TableConfig(header: header, type: FileType.table, delimeter: "│", trim: true), dataRows)
             } else if row.matches(ParsedTable.sqlHeaderPattern) { // SQL table header used in MySQL/MariaDB like '+----+-------+'
-                if (Global.debug) { print("Detected SQL like table format") }
+                debug("Detected SQL like table format")
+
                 let parsedHeader = try reader.readLine().map { 
                     try! Header(data: $0, delimeter: "|", trim: true, hasOuterBorders: true) 
                 }.orThrow(RuntimeError("Failed to parse SQL like header"))
 
-                return (TableConfig(header: headerOverride ?? parsedHeader, type: FileType.sql, delimeter: "|", trim: true), [])
+                let dataRows = [reader.readLine(), reader.readLine(), reader.readLine()].compactMap{$0}.filter { !ParsedTable.technicalRow($0) }
+                let types = userTypes ?? CellType.infer(rows: dataRows.map { try! ParsedTable.readRowComponents($0, type: .cassandraSql, delimeter: "|", trim: true) })
+                let header = (headerOverride ?? parsedHeader).withTypes(types)
+
+                return (TableConfig(header: header, type: FileType.sql, delimeter: "|", trim: true), dataRows)
             } else if row.matches("^([A-Za-z_0-9\\s]+\\|\\s*)+[A-Za-z_0-9\\s]+$") { // Cassandra like header: name | name2 | name3
-                if (Global.debug) { print("Detected Cassandra like table format") }
-                let header = try! Header(data: row, delimeter: "|", trim: true, hasOuterBorders: false)
-                return (TableConfig(header: headerOverride ?? header, type: FileType.cassandraSql, delimeter: "|", trim: true), [])
+                debug("Detected Cassandra like table format")
+
+                let dataRows = [reader.readLine(), reader.readLine(), reader.readLine()].compactMap{$0}.filter { !ParsedTable.technicalRow($0) }
+                let types = userTypes ?? CellType.infer(rows: dataRows.map { try! ParsedTable.readRowComponents($0, type: .cassandraSql, delimeter: "|", trim: true) })
+
+                let header =  try! (headerOverride ?? Header(data: row, delimeter: "|", trim: true, hasOuterBorders: false, types: types)).withTypes(types)
+                return (TableConfig(header: header, type: FileType.cassandraSql, delimeter: "|", trim: true), dataRows)
             } else {
-                if (Global.debug) { print("Detected CSV like table format") }
+                debug("Detected CSV like table format")
                 let delimeters = delimeter.map{ [$0] } ?? [",", ";", "\t", " ", "|"]
 
                 // Pre-read up to 2 rows and apply delimeter to the header and rows.
@@ -161,10 +160,14 @@ class ParsedTable: Table {
                     debug("Found delimeter '\(d)'")
 
                     if try! dataRows.allSatisfy({ (try Csv.parseLine($0, delimeter: d).count) == colsCount}) {
-                        let header: Header = try! (hasHeader ?? true) ? Header(data: row, delimeter: d, trim: false, hasOuterBorders: false) : Header.auto(size: 1)
+                        let readHeader: Header = try! (hasHeader ?? true) ? Header(data: row, delimeter: d, trim: false, hasOuterBorders: false) : Header.auto(size: 1)
                         debug("Detected as CSV format with header separated by '\(d)' with \(colsCount) columns")
+                        
                         let cachedRows = (hasHeader ?? true) ? dataRows : ([row] + dataRows)
-                        return (TableConfig(header: headerOverride ?? header, type: FileType.csv, delimeter: d, trim: false), cachedRows)
+                        let types = CellType.infer(rows: cachedRows.map { try! Csv.parseLine($0, delimeter: d) })                    
+                        let header = (headerOverride ?? readHeader).withTypes(types)
+
+                        return (TableConfig(header: header, type: FileType.csv, delimeter: d, trim: false), cachedRows)
                     } else {
                         debug("Columns count mismatch")
                     }
@@ -178,5 +181,28 @@ class ParsedTable: Table {
         } else {
             return nil // Empty file
         }
+    }
+
+    private static func readRowComponents(_ row: String, type: FileType, delimeter: String, trim: Bool, hasOuterBorders: Bool = false) throws -> [String] {
+        if type == .csv {
+            return try! Csv.parseLine(row, delimeter: delimeter)
+        } 
+        
+        var components = row.components(separatedBy: delimeter)
+
+        if trim {
+            components = components.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        }
+
+        if hasOuterBorders {
+            components = components.dropFirst().dropLast()
+        }
+
+        return components
+    }
+
+        // matches rows that has to be skipped, usually horizontal delimeters
+    private static func technicalRow(_ str: String?) -> Bool {
+        return str?.matches(ParsedTable.technicalRowPattern) ?? false
     }
 }

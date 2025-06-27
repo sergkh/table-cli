@@ -40,7 +40,7 @@ class NewColumnsTableView: Table {
 
   var header: Header { 
     get {
-      return self.table.header + Header(components: additionalColumns.map { $0.0 })
+      return self.table.header + Header(components: additionalColumns.map { $0.0 }, types: additionalColumns.map { _ in CellType.string })
     }
   }
 
@@ -77,7 +77,10 @@ class ColumnsTableView: Table {
   init(table: any Table, visibleColumns: [String]) {
     self.table = table
     self.visibleColumns = visibleColumns
-    self.header = Header(components: visibleColumns)
+    let types = visibleColumns.map { name in
+      table.header.index(ofColumn: name).map {idx in table.header.types[idx]} ?? .string 
+    }
+    self.header = Header(components: visibleColumns, types: types)
   }
 
   func next() -> Row? {

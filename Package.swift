@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
     name: "table",
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.1"),
         // .package(url: "https://github.com/groue/GRMustache.swift", from: "4.0.0")
     ],
     targets: [

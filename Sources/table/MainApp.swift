@@ -67,6 +67,9 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("header"), help: "Override header. Columns should be specified separated by comma.")
     var header: String?
 
+    @Option(name: .customLong("types"), help: "Optionally specify column types explicitly. If not set, the tool will try to detect types automatically. Example: --types string,number,date or in short form . Supported types: string, number, date, boolean.")
+    var columnTypes: String?
+
     @Option(name: .customLong("columns"), help: "Speficies a comma separated list of columns to show in the output. Not compatible with --print.")
     var columns: String?    
 
@@ -112,9 +115,11 @@ struct MainApp: ParsableCommand {
             print("Debug enabled")
         }
         
+        let userTypes = try columnTypes.map { try CellType.fromStringList($0) }
+
         let headerOverride = header.map { try! Header(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
         
-        var table: any Table = try ParsedTable.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter)
+        var table: any Table = try ParsedTable.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter, userTypes: userTypes)
         
         let filter = try filter.map { try Filter.compile(filter: $0, header: table.header) }
 
