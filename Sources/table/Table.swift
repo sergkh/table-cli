@@ -65,7 +65,7 @@ class ParsedTable: Table {
         }
 
         return try! row.map { row in 
-            let components = try ParsedTable.readRowComponents(row, type: conf.type, delimeter: conf.delimeter, trim: conf.trim, hasOuterBorders: FileType.hasOuterBorders(type: conf.type))
+            let components = try ParsedTable.readRowComponents(row, type: conf.type, delimeter: conf.delimeter, trim: conf.trim)
 
             return Row(
                 header: conf.header,
@@ -130,7 +130,7 @@ class ParsedTable: Table {
                 }.orThrow(RuntimeError("Failed to parse SQL like header"))
 
                 let dataRows = [reader.readLine(), reader.readLine(), reader.readLine()].compactMap{$0}.filter { !ParsedTable.technicalRow($0) }
-                let types = userTypes ?? CellType.infer(rows: dataRows.map { try! ParsedTable.readRowComponents($0, type: .cassandraSql, delimeter: "|", trim: true) })
+                let types = userTypes ?? CellType.infer(rows: dataRows.map { try! ParsedTable.readRowComponents($0, type: .sql, delimeter: "|", trim: true) })
                 let header = (headerOverride ?? parsedHeader).withTypes(types)
 
                 return (TableConfig(header: header, type: FileType.sql, delimeter: "|", trim: true), dataRows)
@@ -183,7 +183,7 @@ class ParsedTable: Table {
         }
     }
 
-    private static func readRowComponents(_ row: String, type: FileType, delimeter: String, trim: Bool, hasOuterBorders: Bool = false) throws -> [String] {
+    private static func readRowComponents(_ row: String, type: FileType, delimeter: String, trim: Bool) throws -> [String] {
         if type == .csv {
             return try! Csv.parseLine(row, delimeter: delimeter)
         } 
@@ -194,7 +194,7 @@ class ParsedTable: Table {
             components = components.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         }
 
-        if hasOuterBorders {
+        if FileType.hasOuterBorders(type: type) {
             components = components.dropFirst().dropLast()
         }
 

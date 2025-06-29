@@ -39,6 +39,7 @@ enum CellType {
   }
   
   // Infers cell types from the first few rows of data
+  // TODO: handle more complex cases when the first row is null
   static func infer(rows: [[String]]) -> [CellType] {
     let dateFormat = DateFormatter()
     dateFormat.dateFormat = "yyyy-MM-dd hh:mm:ss"
@@ -60,7 +61,12 @@ enum CellType {
     for row in rows.dropFirst() {
       for (idx, value) in row.enumerated() {
         let type = types[idx]
-        if type == .number && !value.isNumber {
+        
+        if value.caseInsensitiveCompare("null") == .orderedSame {
+          continue // skip null values as they don't affect type inference
+        }
+
+        if type == .number && !value.isNumber{
           types[idx] = .string
         } else if type == .date && !value.isDate {
           types[idx] = .string
