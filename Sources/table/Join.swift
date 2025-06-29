@@ -50,7 +50,7 @@ class Join {
 
   
   static func parse(_ file: String, joinOn: String?, firstTable: any Table) throws -> Join {
-    try parse(try ParsedTable.parse(path: file, hasHeader: nil, headerOverride: nil, delimeter: nil), joinOn: joinOn, firstTable: firstTable)
+    try parse(try ParsedTable.parse(path: file, hasHeader: nil, headerOverride: nil, delimeter: nil, userTypes: nil), joinOn: joinOn, firstTable: firstTable)
   }
 
   static func parse(_ matchTable: ParsedTable, joinOn: String?, firstTable: any Table) throws -> Join {

@@ -5,25 +5,12 @@ class Row {
     let components: [Cell]
     let header: Header?
 
-    convenience init(header: Header?, index: Int, data: String, delimeter: String, trim: Bool, hasOuterBorders: Bool) {
-        var components = data.components(separatedBy: delimeter)
-
-        if trim {
-            components = components.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        }        
-
-        if hasOuterBorders {
-            components = components.dropFirst().dropLast()
-        }
-
-        self.init(header: header, index: index, components: components)
+    convenience init(header: Header, index: Int, components: [String]) {
+        let components = zip(components, header.types).map { Cell(value: $0.0, type: $0.1) }
+        self.init(header: header, index: index, cells: components)
     }
 
-    convenience init(header: Header?, index: Int, components: [String]) {
-        self.init(header: header, index: index, cells: components.map { Cell(value: $0) })
-    }
-
-    init(header: Header?, index: Int, cells: [Cell]) {
+    init(header: Header, index: Int, cells: [Cell]) {
         self.header = header
         self.index = index
         self.components = cells

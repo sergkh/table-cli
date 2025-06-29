@@ -1,3 +1,5 @@
+import Foundation
+
 extension Optional {
     func orThrow(_ errorExpression: @autoclosure () -> Error) throws -> Wrapped {
         switch self {
@@ -14,10 +16,23 @@ extension String {
         return self.range(of: regex, options: .regularExpression, range: nil, locale: nil) != nil
     }
 
+    // TODO: remove me
     var isNumber: Bool {
-        return self.matches("^-?[0-9]*$")
+        if let _ = Double(self) {
+            return true
+        }
+        return false
     }
 
+    var isDate: Bool {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss" // Adjust as needed for your date format
+        return dateFormatter.date(from: self.replacingOccurrences(of: "T", with: " ")) != nil
+    }
+
+    var isBoolean: Bool {
+        return self.caseInsensitiveCompare("true") == .orderedSame || self.caseInsensitiveCompare("false") == .orderedSame
+    }
 }
 
 extension Array {

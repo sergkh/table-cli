@@ -86,17 +86,15 @@ class Format {
         }
 
         if name == "%quoted_values" {
-            return row.components.map {
-                let v = $0.value
-                if v.caseInsensitiveCompare("true") == .orderedSame || 
-                   v.caseInsensitiveCompare("false") == .orderedSame ||
-                   v.caseInsensitiveCompare("null")  == .orderedSame || 
-                   v.isNumber
-                   {
-                     return v
-                   } else {
-                     return "'\(v)'"
-                   }
+            return row.components.enumerated().map { (index, cell) in
+                let v = cell.value
+                let type = row.header?.type(ofIndex: index) ?? .string
+                
+                if type == .boolean || type == .number || v.caseInsensitiveCompare("null") == .orderedSame {
+                    return v
+                } else {
+                    return "'\(v)'"
+                }
             }.joined(separator: ",")
         }
 
