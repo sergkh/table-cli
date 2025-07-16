@@ -2,7 +2,7 @@ import Foundation
 
 class Format {
     static let regex = try! NSRegularExpression(pattern: "\\$\\{([%A-Za-z0-9_\\s]+)\\}")
-    static let internalVars = ["%header", "%values", "%quoted_values"]
+    static let internalVars = ["%header", "%values", "%quoted_values", "%uuid"]
     let format: String
     let matches: [NSTextCheckingResult]
     let parts: [String]
@@ -44,8 +44,7 @@ class Format {
         return self
     }
 
-    // Format allows to specify initial column values as well as 
-    // dynamically formed columns
+    // Format allows to specify initial column values as well as dynamically formed columns
     func fill(row: Row) -> String {
         var idx = 0
         var newStr = ""
@@ -83,6 +82,10 @@ class Format {
 
         if name == "%values" {
             return row.components.map({ $0.value }).joined(separator: ",")
+        }
+
+        if name == "%uuid" {
+            return UUID().uuidString
         }
 
         if name == "%quoted_values" {

@@ -54,7 +54,7 @@ class NewColumnsTableView: Table {
 
     if let row {
       let newColumnsData = additionalColumns.map { (_, fmt) in
-        Cell(fn: { shell(fmt.fill(row: row)) })        
+        Cell(fn: { fmt.fill(row: row) })        
       }
       
       return Row(

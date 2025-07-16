@@ -16,7 +16,6 @@ extension String {
         return self.range(of: regex, options: .regularExpression, range: nil, locale: nil) != nil
     }
 
-    // TODO: remove me
     var isNumber: Bool {
         if let _ = Double(self) {
             return true

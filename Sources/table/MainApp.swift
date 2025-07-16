@@ -90,7 +90,7 @@ struct MainApp: ParsableCommand {
     var filter: String?
 
     // TODO: Support adding more than one column?
-    @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Example: --add 'curl http://email-db.com/${email}'.")
+    @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Example: --add 'col_name=#{curl http://email-db.com/${email}}'.")
     var addColumns: [String] = []
 
     @Option(name: .customLong("distinct"), help: "Returns only distinct values for the specified column set. Example: --distinct name,city_id.")
@@ -125,7 +125,21 @@ struct MainApp: ParsableCommand {
 
         if !addColumns.isEmpty {
             // TODO: add support of Dynamic Row values and move validation right before rendering
-            let columns = try addColumns.enumerated().map { (index, element) in ("newColumn\(index + 1)", try Format(format: element).validated(header: table.header)) }
+            let columns = try addColumns.enumerated().map { (index, colDefinition) in
+                let parts = colDefinition.split(separator: "=", maxSplits: 1)
+                if (parts.count != 2) {
+                    throw RuntimeError("Invalid add column format: '--add \(colDefinition)'. Expected format: col_name=format")
+                }
+
+                let colName = String(parts[0]).trimmingCharacters(in: CharacterSet.whitespaces)
+                let formatStr = String(parts[1])
+
+                if (Global.debug) { 
+                    print("Adding a column: \(colName) with format: '\(formatStr)'") 
+                }                
+                return (colName, try Format(format: formatStr).validated(header: table.header)) 
+            }
+
             table = NewColumnsTableView(table: table, additionalColumns: columns)
         }
 
