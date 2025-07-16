@@ -125,7 +125,7 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("generate"), help: "Generates a sample empty table with the specified number of rows. Example: '--generate 1000 --add id=%{uuid}' will generate a table of UUIDs with 1000 rows.")
     var generate: Int?
 
-    mutating func run() async throws {
+    mutating func run() throws {
                 
         if debugEnabled {
             Debug.enableDebug()
