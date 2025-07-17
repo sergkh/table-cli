@@ -79,7 +79,7 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("limit"), help: "Process only up to specified number of lines.")
     var limitLines: Int?
 
-    @Option(name: [.customLong("print")], help: "Format output accorindg to format string. Use ${column name} to print column value. Example: Column1 value is ${column1}.")
+    @Option(name: [.customLong("print")], help: "Format output accorindg to format string. Use ${column name} to print column value. Expression #{cmd} can be used to execute command. Example: Column1 value is ${column1} and execution result #{curl service/${column2}}.")
     var printFormat: String?
 
     @Option(name: [.customLong("as")], help: "Prints output in the specified format. Supported formats: table (default) or csv.")
@@ -89,8 +89,7 @@ struct MainApp: ParsableCommand {
     @Option(name: .shortAndLong, help: "Filter rows by a single value criteria. Example: country=UA or size>10. Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains.")
     var filter: String?
 
-    // TODO: Support adding more than one column?
-    @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Example: --add 'col_name=#{curl http://email-db.com/${email}}'.")
+    @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Expressions ${name} and #{cmd} are substituted by column value and command result respectively. Example: --add 'col_name=#{curl http://email-db.com/${email}}'.")
     var addColumns: [String] = []
 
     @Option(name: .customLong("distinct"), help: "Returns only distinct values for the specified column set. Example: --distinct name,city_id.")

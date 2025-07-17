@@ -5,6 +5,22 @@ class Row {
     let components: [Cell]
     let header: Header?
 
+    var dictionary: [String: Cell] {
+        var dict = [String: Cell]()
+        
+        if let header = header {
+            for (index, name) in header.components().enumerated() {                
+                dict[name] = components[index]
+            }
+        } else {
+            for (index, cell) in components.enumerated() {
+                dict[index.description] = cell
+            }
+        }
+        
+        return dict
+    }
+
     convenience init(header: Header, index: Int, components: [String]) {
         let components = zip(components, header.types).map { Cell(value: $0.0, type: $0.1) }
         self.init(header: header, index: index, cells: components)
