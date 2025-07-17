@@ -15,7 +15,7 @@ class FormatTests: XCTestCase {
 
     func testParseExpressionsWithFns() throws {
         let (exprTree, _) = Format.parse("Header: %{header} values: %{values}")
-        XCTAssertEqual(exprTree.description, "Group(parts: [Text(Header: ), Func(name: header), Text( values: ), Func(name: values)])")
+        XCTAssertEqual(exprTree.description, "Group(parts: [Text(Header: ), Function(name: header), Text( values: ), Function(name: values)])")
     }
 
     func testParseExpressionsWithExec() throws {
