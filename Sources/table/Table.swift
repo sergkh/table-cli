@@ -96,7 +96,7 @@ class ParsedTable: Table {
             file = try FileHandle(forReadingAtPath: path).orThrow(RuntimeError("File \(path) is not found"))
         } else {
             
-            if (isatty(fileno(stdin)) != 0) {
+            if (isatty(STDIN_FILENO) != 0) {
                 throw RuntimeError("No input file provided and standard input is not a terminal. Use --input to specify a file or --generate to generate rows.")
             }
 
