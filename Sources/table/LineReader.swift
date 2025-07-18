@@ -74,3 +74,23 @@ class ArrayLineReader: LineReader {
 
     func close() {}
 }
+
+class GeneratedLineReader: LineReader {
+    private var index = 0
+    let total: Int
+
+    init(lines: Int) {
+        self.total = lines    
+    }
+
+    func readLine() -> String? {
+        if index == total {
+            return nil
+        } else {            
+            index += 1
+            return ""
+        }
+    }
+
+    func close() {}
+}

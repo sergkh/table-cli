@@ -32,7 +32,7 @@ func buildPrinter(formatOpt: Format?, outFileFmt: FileType, outputFile: String?)
 
 @main
 struct MainApp: ParsableCommand {
-    static var configuration = CommandConfiguration(
+    static let configuration = CommandConfiguration(
         commandName: "table",
         abstract: "A utility for transforming CSV files of SQL output.",
         discussion: """
@@ -61,8 +61,8 @@ struct MainApp: ParsableCommand {
     @Flag(name: .customLong("no-out-header"), help: "Do not print header in the output.") 
     var skipOutHeader = false
 
-    @Flag(help: "Prints debug output") 
-    var debug = false
+    @Flag(name: .customLong("debug"), help: "Prints debug output") 
+    var debugEnabled = false
 
     @Option(name: .customLong("header"), help: "Override header. Columns should be specified separated by comma.")
     var header: String?
@@ -85,9 +85,8 @@ struct MainApp: ParsableCommand {
     @Option(name: [.customLong("as")], help: "Prints output in the specified format. Supported formats: table (default) or csv.")
     var asFormat: String? 
 
-    // TODO: Support complex or multiple filters?
-    @Option(name: .shortAndLong, help: "Filter rows by a single value criteria. Example: country=UA or size>10. Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains.")
-    var filter: String?
+    @Option(name: [.customShort("f"), .customLong("filter")], help: "Filter rows by a single value criteria. Example: country=UA or size>10. Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains.")
+    var filters: [String] = []
 
     @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Expressions ${name} and #{cmd} are substituted by column value and command result respectively. Example: --add 'col_name=#{curl http://email-db.com/${email}}'.")
     var addColumns: [String] = []
@@ -107,9 +106,12 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("sample"), help: "Samples percentage of the total rows. Example: --sample 50. Samples only half of the rows.")
     var sample: Int?
 
+    @Option(name: .customLong("generate"), help: "Generates a sample empty table with the specified number of rows. Example: '--generate 1000 --add id=%{uuid}' will generate a table of UUIDs with 1000 rows.")
+    var generate: Int?
+
     mutating func run() throws {
                 
-        if debug {
+        if debugEnabled {
             Global.debug = true
             print("Debug enabled")
         }
@@ -118,9 +120,19 @@ struct MainApp: ParsableCommand {
 
         let headerOverride = header.map { try! Header(data: $0, delimeter: ",", trim: false, hasOuterBorders: false) }
         
-        var table: any Table = try ParsedTable.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter, userTypes: userTypes)
+        var table: any Table
+
+        if let generate {
+            if inputFile != nil {
+                throw RuntimeError("Input file is not expected when generating rows. Use --generate without input file.")
+            }
+            debug("Generating \(generate) rows")
+            table = ParsedTable.generated(rows: generate)
+        } else {
+            table = try ParsedTable.parse(path: inputFile, hasHeader: !noInHeader, headerOverride: headerOverride, delimeter: delimeter, userTypes: userTypes)
+        }
         
-        let filter = try filter.map { try Filter.compile(filter: $0, header: table.header) }
+        let parsedFilters = filters.isEmpty ? nil : try filters.map { try Filter.compile(filter: $0, header: table.header) }
 
         if !addColumns.isEmpty {
             // TODO: add support of Dynamic Row values and move validation right before rendering
@@ -133,9 +145,8 @@ struct MainApp: ParsableCommand {
                 let colName = String(parts[0]).trimmingCharacters(in: CharacterSet.whitespaces)
                 let formatStr = String(parts[1])
 
-                if (Global.debug) { 
-                    print("Adding a column: \(colName) with format: '\(formatStr)'") 
-                }                
+                debug("Adding a column: \(colName) with format: '\(formatStr)'")
+            
                 return (colName, try Format(format: formatStr).validated(header: table.header)) 
             }
 
@@ -154,22 +165,20 @@ struct MainApp: ParsableCommand {
         let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }
 
         if let sortColumns {
-            let expression = try Sort(sortColumns).validated(header: table.header)
-            if (Global.debug) { 
-                print("Sorting by columns: \(expression.columns.map { (name, order) in "\(name) \(order)" }.joined(separator: ","))") 
-            }
+            let expression = try Sort(sortColumns).validated(header: table.header)            
+            debug("Sorting by columns: \(expression.columns.map { (name, order) in "\(name) \(order)" }.joined(separator: ","))")             
             table = try InMemoryTableView(table: table).sort(expr: expression)
         }
 
         if let columns {
             let columns = columns.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            if (Global.debug) { print("Showing columns: \(columns.joined(separator: ","))") }
+            debug("Showing columns: \(columns.joined(separator: ","))")
             try columns.forEach { if table.header.index(ofColumn: $0) == nil { throw RuntimeError("Column \($0) in columns clause is not found in the table") } }
             table = ColumnsTableView(table: table, visibleColumns: columns)
         }
 
         if let sample {
-            if (Global.debug) { print("Sampling \(sample)% of the rows") }
+            debug("Sampling \(sample)% of the rows")
             table = SampledTableView(table: table, percentage: sample)
         }
 
@@ -184,8 +193,10 @@ struct MainApp: ParsableCommand {
         var limit = limitLines ?? Int.max
         
         while let row = table.next() {
-            if let filter {
-                if !filter.apply(row: row) { continue }
+            if let parsedFilters {
+                if (!parsedFilters.allSatisfy { $0.apply(row: row) }) { 
+                    continue 
+                }
             }
 
             if (skip > 0) {

@@ -15,9 +15,7 @@ class Join {
     self.matchTable = matchTable
     self.secondColIndex = try matchTable.header.index(ofColumn: secondColumn).orThrow(RuntimeError("Column \(secondColumn) is not found in table"))
 
-    if (Global.debug) {
-      print("Joining table on columns \(firstColumn)=\(secondColumn)")
-    }
+    debug("Joining table on columns \(firstColumn)=\(secondColumn)")
   }
 
   func matching(row: Row) -> Row? {
