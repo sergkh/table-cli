@@ -1,91 +1,79 @@
 import Foundation
 
-class Format {
-    static let regex = try! NSRegularExpression(pattern: "\\$\\{([%A-Za-z0-9_\\s]+)\\}")
-    static let internalVars = ["%header", "%values", "%quoted_values"]
-    let format: String
-    let matches: [NSTextCheckingResult]
-    let parts: [String]
-    let vars: [String]
+// Structure representing a format tree
+protocol FormatExpr: CustomStringConvertible, Equatable {
+    func fill(row: Row) throws -> String 
+    func validate(header: Header?) throws -> Void
+}
 
-    init(format: String) {
-        self.format = format
-        let range = NSRange(format.startIndex..., in: format)
-        matches = Format.regex.matches(in: format, range: range)
+struct VarPart: FormatExpr {
+    let name: String
 
-        var variables: [String] = []
-        var strParts: [String] = []
-        
-        var lastIndex = format.startIndex
-
-        // Break matches into 2 arrays text parts and variable names
-        for match in matches {        
-            let range = lastIndex..<format.index(format.startIndex, offsetBy: match.range.lowerBound)
-            variables.append(String(format[Range(match.range(at: 1), in: format)!]))
-            strParts.append(String(format[range]))
-            lastIndex = format.index(format.startIndex, offsetBy: match.range.upperBound)
-        }
-
-        strParts.append(String(format[lastIndex...]))
-
-        parts = strParts
-        vars = variables
+    init(_ name: String) {
+        self.name = name
     }
 
-    func validated(header: Header?) throws -> Format {
-        if let h = header {
-            for v in vars {
-                if h.index(ofColumn: v) == nil && !Format.internalVars.contains(v) {
-                    throw RuntimeError("Unknown column in print format: \(v). Supported columns: \(h.columnsStr())")
-                }
-            }
-        }
-
-        return self
-    }
-
-    // Format allows to specify initial column values as well as 
-    // dynamically formed columns
     func fill(row: Row) -> String {
-        var idx = 0
-        var newStr = ""
-
-        for v in vars {
-            newStr += parts[idx] + columnValue(row: row, name: v)
-            idx += 1
-        }
-
-        newStr += parts[idx]
-
-        return newStr
+        return row[name] ?? ""
     }
 
-    func fillData(row: Row) -> Data {
-        fill(row: row).data(using: .utf8)!
+    func validate(header: Header?) throws {
+        if let h = header {
+            if h.index(ofColumn: name) == nil {
+                throw RuntimeError("Unknown column in format: \(name). Supported columns: \(h.columnsStr())")
+            }        
+        }
     }
 
-    func columnValue(row: Row, name: String) -> String {
-        if let v = resolveInternalVariable(row, name) {
-            return v
-        }
+    var description: String {
+        return "Var(name: \(name))"
+    }
+}
 
-        if let v = row[name] {
-            return v
-        }
+struct TextPart: FormatExpr {
+    let text: String
 
-        return ""
+    init(_ text: String) {
+        self.text = text
     }
 
-    func resolveInternalVariable(_ row: Row, _ name: String) -> String? {
-        if name == "%header" {
-            return row.header?.columnsStr()
+    func fill(row: Row) -> String {
+        return text
+    }
+
+    func validate(header: Header?) throws {}
+
+    var description: String {
+        return "Text(\(text))"
+    }
+}
+
+struct FunctionPart: FormatExpr {
+    let name: String
+    
+    static let internalFunctions = ["header", "values", "quoted_values", "uuid"]
+
+    init(fnName: String) {
+        self.name = fnName
+    }
+
+    func fill(row: Row) throws -> String {
+        if name == "header" {
+            guard let header = row.header else {
+                throw RuntimeError("Header is not defined")
+            }
+            return header.columnsStr()
         }
 
-        if name == "%values" {
+        if name == "values" {
             return row.components.map({ $0.value }).joined(separator: ",")
         }
 
-        if name == "%quoted_values" {
+        if name == "uuid" {
+            return UUID().uuidString
+        }
+
+        if name == "quoted_values" {
             return row.components.enumerated().map { (index, cell) in
                 let v = cell.value
                 let type = row.header?.type(ofIndex: index) ?? .string
@@ -98,6 +86,173 @@ class Format {
             }.joined(separator: ",")
         }
 
-        return nil
+        throw RuntimeError("Unknown function: \(name). Supported functions: \(FunctionPart.internalFunctions.joined(separator: ", "))")
+    }
+
+    func validate(header: Header?) throws {
+        if let h = header {
+            if !FunctionPart.internalFunctions.contains(name) && h.index(ofColumn: name) == nil {
+                throw RuntimeError("Unknown function in format: \(name). Supported columns: \(FunctionPart.internalFunctions.joined(separator: ", "))")
+            }
+        }
+    }
+
+    var description: String {
+        return "Function(name: \(name))"
+    }
+}
+
+struct FormatGroup: FormatExpr {
+    let parts: [any FormatExpr]
+
+    init(_ parts: [any FormatExpr]) {
+        self.parts = parts
+    }
+
+    func fill(row: Row) throws -> String {
+        var result = ""
+        for part in parts {
+            result += try part.fill(row: row)
+        }
+        return result
+    }
+
+    func validate(header: Header?) throws {
+        for part in parts {
+            try part.validate(header: header)
+        }
+    }
+
+    var description: String {
+        return "Group(parts: \(parts))"
+    }
+
+    static func == (lhs: FormatGroup, rhs: FormatGroup) -> Bool {
+        return lhs.parts.map { $0.description } == rhs.parts.map { $0.description }
+    }
+}
+
+struct ExecPart: FormatExpr {
+    let command: any FormatExpr
+
+    init(command: any FormatExpr) {
+        self.command = command
+    }
+
+    func fill(row: Row) throws -> String {
+        return try shell(String(describing: command.fill(row: row)))
+    }
+
+    func validate(header: Header?) throws {
+        try command.validate(header: header)
+    }
+
+    var description: String {
+        return "Exec(command: \(command))"
+    }
+
+    static func == (lhs: ExecPart, rhs: ExecPart) -> Bool {
+        return lhs.command.description == rhs.command.description
+    }
+}
+
+class Format {
+    static let regex: NSRegularExpression = try! NSRegularExpression(pattern: "\\$\\{([%A-Za-z0-9_\\s]+)\\}")
+    
+    let original: String
+    let format: any FormatExpr
+
+    init(format: String) {
+        self.original = format
+        self.format = Format.parse(original).0
+    }
+
+    func validated(header: Header?) throws -> Format {
+        try format.validate(header: header)
+        return self
+    }
+
+    func fill(row: Row) -> String {
+        // we rely on the fact that `fill` is called only after validation
+        try! format.fill(row: row)
+    }
+
+    func fillData(row: Row) -> Data {
+        fill(row: row).data(using: .utf8)!
+    }
+
+    static func parse(_ input: String, from start: String.Index? = nil, until closing: Character? = nil) -> (any FormatExpr, String.Index) {
+        var index = start ?? input.startIndex
+        var nodes: [any FormatExpr] = []
+        var buffer = ""
+
+        while index < input.endIndex {
+            // Handle closing delimiter if needed
+            if let closing = closing, input[index] == closing {
+                if !buffer.isEmpty {
+                    nodes.append(TextPart(buffer))
+                }
+                return (FormatGroup(nodes), input.index(after: index))
+            }
+
+            if input[index...].hasPrefix("${") {
+                if !buffer.isEmpty {
+                    nodes.append(TextPart(buffer))
+                    buffer = ""
+                }
+                index = input.index(index, offsetBy: 2)
+                let (name, newIndex) = readUntil(input, delimiter: "}", from: index)
+                if let name = name {
+                    nodes.append(VarPart(name))
+                }
+                index = newIndex
+
+            } else if input[index...].hasPrefix("%{") {
+                if !buffer.isEmpty {
+                    nodes.append(TextPart(buffer))
+                    buffer = ""
+                }
+                index = input.index(index, offsetBy: 2)
+                let (name, newIndex) = readUntil(input, delimiter: "}", from: index)
+                if let name = name {
+                    nodes.append(FunctionPart(fnName: name))
+                }
+                index = newIndex
+            } else if input[index...].hasPrefix("#{") {
+                if !buffer.isEmpty {
+                    nodes.append(TextPart(buffer))
+                    buffer = ""
+                }
+                index = input.index(index, offsetBy: 2)
+                let (inner, newIndex) = parse(input, from: index, until: "}")
+                nodes.append(ExecPart(command: inner))
+                index = newIndex
+
+            } else {
+                buffer.append(input[index])
+                index = input.index(after: index)
+            }
+        }
+
+        if !buffer.isEmpty {
+            nodes.append(TextPart(buffer))
+        }
+
+        return (FormatGroup(nodes), index)
+    }
+
+    private static func readUntil(_ input: String, delimiter: Character, from start: String.Index) -> (String?, String.Index) {
+        var index = start
+        var result = ""
+
+        while index < input.endIndex {
+            if input[index] == delimiter {
+                return (result, input.index(after: index))
+            }
+            result.append(input[index])
+            index = input.index(after: index)
+        }
+
+        return (nil, index)
     }
 }

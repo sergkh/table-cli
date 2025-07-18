@@ -103,7 +103,7 @@ table in.csv --columns 'name,last_name'
 * Append a new column that has result of multiplication of two other columns. To substitute column value in the command `${column name}` format should be used. New column gets name 'newColumn1':
 
 ```bash
-table in.csv --add 'echo "${cost} * ${amount}" | bc'
+table in.csv --add sum='#{echo "${cost} + ${amount}" | bc}'
 ```
 
 * Joining two CSV files by a common column. Joins on the column named 'id' in the first file that should match 'product_id' in the second file:

@@ -79,7 +79,7 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("limit"), help: "Process only up to specified number of lines.")
     var limitLines: Int?
 
-    @Option(name: [.customLong("print")], help: "Format output accorindg to format string. Use ${column name} to print column value. Example: Column1 value is ${column1}.")
+    @Option(name: [.customLong("print")], help: "Format output accorindg to format string. Use ${column name} to print column value. Expression #{cmd} can be used to execute command. Example: Column1 value is ${column1} and execution result #{curl service/${column2}}.")
     var printFormat: String?
 
     @Option(name: [.customLong("as")], help: "Prints output in the specified format. Supported formats: table (default) or csv.")
@@ -89,8 +89,7 @@ struct MainApp: ParsableCommand {
     @Option(name: .shortAndLong, help: "Filter rows by a single value criteria. Example: country=UA or size>10. Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains.")
     var filter: String?
 
-    // TODO: Support adding more than one column?
-    @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Example: --add 'curl http://email-db.com/${email}'.")
+    @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Expressions ${name} and #{cmd} are substituted by column value and command result respectively. Example: --add 'col_name=#{curl http://email-db.com/${email}}'.")
     var addColumns: [String] = []
 
     @Option(name: .customLong("distinct"), help: "Returns only distinct values for the specified column set. Example: --distinct name,city_id.")
@@ -125,7 +124,21 @@ struct MainApp: ParsableCommand {
 
         if !addColumns.isEmpty {
             // TODO: add support of Dynamic Row values and move validation right before rendering
-            let columns = try addColumns.enumerated().map { (index, element) in ("newColumn\(index + 1)", try Format(format: element).validated(header: table.header)) }
+            let columns = try addColumns.enumerated().map { (index, colDefinition) in
+                let parts = colDefinition.split(separator: "=", maxSplits: 1)
+                if (parts.count != 2) {
+                    throw RuntimeError("Invalid add column format: '--add \(colDefinition)'. Expected format: col_name=format")
+                }
+
+                let colName = String(parts[0]).trimmingCharacters(in: CharacterSet.whitespaces)
+                let formatStr = String(parts[1])
+
+                if (Global.debug) { 
+                    print("Adding a column: \(colName) with format: '\(formatStr)'") 
+                }                
+                return (colName, try Format(format: formatStr).validated(header: table.header)) 
+            }
+
             table = NewColumnsTableView(table: table, additionalColumns: columns)
         }
 
