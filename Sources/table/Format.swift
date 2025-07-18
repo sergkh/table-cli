@@ -77,8 +77,8 @@ struct FunctionPart: FormatExpr {
         }
 
         if name == "random" {
-            let from = arguments.count == 1 ? try Int(arguments[0].fill(row: row))! : 0
-            let to = arguments.count == 2 ? try Int(arguments[1].fill(row: row))! : try Int(arguments[0].fill(row: row))!            
+            let from = arguments.count > 0 ? try Int(arguments[0].fill(row: row))! : 0
+            let to = arguments.count == 2 ? try Int(arguments[1].fill(row: row))! : try Int(arguments[0].fill(row: row))!
             return String(Int.random(in: from...to))
         }
 
