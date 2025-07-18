@@ -47,7 +47,7 @@ Steve Pitt
 # Features 
 
 * Parsing table data from CSV (with simple automatic delimeter detection), SQL or Cassandra outputs
-* Filtering columns based on certain criteria. Filter attempts to correctly interpret numbers (but not floating point numbers yet), instead of using only string to string comparison.
+* Filtering columns based on certain criteria. Filter attempts to correctly interpret numbers (but not floating point numbers yet), instead of using only string to string comparison. Multiple filters can be applied
 * Overriding table header to a custom one
 * Moving/removing columns
 * Dynamically adding new columns from a shell script output based on row data
@@ -56,6 +56,7 @@ Steve Pitt
 * Joining of multiple table inputs
 * Showing only distinct data for a column
 * Sorting by the specified columns
+* Data generation
 
 ## Planned Features
 * Reduce functions
@@ -116,6 +117,37 @@ table file1.csv --join file2.csv --on 'id=product_id'
 
 ```bash
 table ./test-data/table-format.out --sort "!available,id"
+```
+
+* Generate table with test data
+
+```bash
+table --generate 10 --add id=%{uuid} --add status='%{randomChoice(on,off)}' --add amount='%{random(1,10)}'
+```
+Produces:
+
+```
+╭──────────────────────────────────────┬────────┬────────╮
+│ id                                   │ status │ amount │
+├──────────────────────────────────────┼────────┼────────┤
+│ BFF8907B-1559-476C-9DA6-5D95384E650C │ on     │ 9      │
+│ B5E9868F-C5A6-4B79-A7F9-9D7BBEB06B33 │ on     │ 1      │
+│ 68D9A14F-9428-485F-8C0B-558D0743F761 │ off    │ 4      │
+╰──────────────────────────────────────┴────────┴────────╯
+```
+
+* Generate insert statements with test data
+
+```bash
+table --print 'INSERT INTO orders (id, amound, status) VALUES (\'%{uuid()}\', %{random(1, 1000)}, \'%{randomChoice(ok,pending,failed)}\');' --generate 3
+```
+
+Outputs:
+
+```
+INSERT INTO orders (id, amound, status) VALUES ('BCDABED0-A4EB-4C90-9423-4AA0269A39D7', 266, 'pending');
+INSERT INTO orders (id, amound, status) VALUES ('64FC986A-93A1-4579-B7F5-896CD7757AE8', 462, 'failed');
+INSERT INTO orders (id, amound, status) VALUES ('74CB99C8-D23F-4081-901B-8634187E4269', 529, 'ok');
 ```
 
 ## Building from source
