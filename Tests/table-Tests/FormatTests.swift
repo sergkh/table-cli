@@ -10,17 +10,18 @@ class FormatTests: XCTestCase {
 
     func testParseExpressionsWithVars() throws {
         let (exprTree, _) = Format.parse("String here: ${str1} and here: ${str2}")                
-        XCTAssertEqual(exprTree.description, "Group(parts: [Text(String here: ), Var(name: str1), Text( and here: ), Var(name: str2)])")
+        XCTAssertEqual(exprTree.description, "[Text(String here: ), Var(str1), Text( and here: ), Var(str2)]")
     }
 
     func testParseExpressionsWithFns() throws {
-        let (exprTree, _) = Format.parse("Header: %{header} values: %{values}")
-        XCTAssertEqual(exprTree.description, "Group(parts: [Text(Header: ), Function(name: header), Text( values: ), Function(name: values)])")
+        let (exprTree, _) = Format.parse("Header: %{header()}, values: %{values()}, with args: %{fun(1,${str1},%{fun1()})}") // 
+        XCTAssertEqual(exprTree.description, 
+        "[Text(Header: ), Fun(name: header, arguments: []), Text(, values: ), Fun(name: values, arguments: []), Text(, with args: ), Fun(name: fun, arguments: [Text(1), Var(str1), Fun(name: fun1, arguments: [])])]")
     }
 
     func testParseExpressionsWithExec() throws {
         let (exprTree, _) = Format.parse("Exec: #{echo ${num1} + ${num2}}")
-        XCTAssertEqual(exprTree.description, "Group(parts: [Text(Exec: ), Exec(command: Group(parts: [Text(echo ), Var(name: num1), Text( + ), Var(name: num2)]))])")
+        XCTAssertEqual(exprTree.description, "[Text(Exec: ), Exec(command: Group([Text(echo ), Var(num1), Text( + ), Var(num2)]))]")
     }
 
     func testStringFormat() throws {

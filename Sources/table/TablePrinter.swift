@@ -51,6 +51,7 @@ class CustomFormatTablePrinter: TablePrinter {
   func flush() {}
 }
 
+// Tool own format that looks nicely in terminal
 class PrettyTablePrinter: TablePrinter {
   private let outHandle: FileHandle
   private var columnWidths: [Int] = []
@@ -106,9 +107,10 @@ class PrettyTablePrinter: TablePrinter {
   }
 
   private func formatRow(_ row: [String]) -> String {
+    if row.count == 0 { return "││\n" }
     return row.enumerated().map { (idx, col) in
-        let padding = String(repeating: " ", count: self.columnWidths[idx] - col.count)
-        return "│ " + col + padding + " "
-      }.joined(separator: "") + "│\n"
+      let padding = String(repeating: " ", count: self.columnWidths[idx] - col.count)
+      return "│ " + col + padding + " "
+    }.joined(separator: "") + "│\n"
   }
 }

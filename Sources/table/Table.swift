@@ -79,6 +79,10 @@ class ParsedTable: Table {
         return ParsedTable(reader: ArrayLineReader(lines: []), conf: TableConfig(header: Header.auto(size: 0)), prereadRows: [])
     }
 
+    static func generated(rows: Int) -> ParsedTable {        
+        return ParsedTable(reader: GeneratedLineReader(lines: rows), conf: TableConfig(header: Header.auto(size: 0)), prereadRows: [])
+    }
+
     static func fromArray(_ data: [[String]], header: [String]? = nil) -> ParsedTable {
         let types = CellType.infer(rows: data)
         let parsedHeader = header.map { Header(components: $0, types: types) } ?? Header.auto(size: data.count)        
@@ -91,6 +95,11 @@ class ParsedTable: Table {
         if let path {
             file = try FileHandle(forReadingAtPath: path).orThrow(RuntimeError("File \(path) is not found"))
         } else {
+            
+            if (isatty(fileno(stdin)) != 0) {
+                throw RuntimeError("No input file provided and standard input is not a terminal. Use --input to specify a file or --generate to generate rows.")
+            }
+
             file = FileHandle.standardInput
         }    
 

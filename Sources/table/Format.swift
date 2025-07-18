@@ -1,7 +1,7 @@
 import Foundation
 
 // Structure representing a format tree
-protocol FormatExpr: CustomStringConvertible, Equatable {
+protocol FormatExpr: CustomStringConvertible {
     func fill(row: Row) throws -> String 
     func validate(header: Header?) throws -> Void
 }
@@ -26,7 +26,7 @@ struct VarPart: FormatExpr {
     }
 
     var description: String {
-        return "Var(name: \(name))"
+        return "Var(\(name))"
     }
 }
 
@@ -50,11 +50,14 @@ struct TextPart: FormatExpr {
 
 struct FunctionPart: FormatExpr {
     let name: String
+    let arguments: [any FormatExpr]
     
-    static let internalFunctions = ["header", "values", "quoted_values", "uuid"]
+    static let internalFunctions = ["header", "values", "quoted_values", "uuid", "random", "randomChoice"]
+    static let regex: NSRegularExpression = try! NSRegularExpression(pattern: "\\$\\{([%A-Za-z0-9_\\s]+)\\}")
 
-    init(fnName: String) {
-        self.name = fnName
+    init(name: String, arguments: [any FormatExpr] = []) {
+        self.name = name
+        self.arguments = arguments
     }
 
     func fill(row: Row) throws -> String {
@@ -71,6 +74,20 @@ struct FunctionPart: FormatExpr {
 
         if name == "uuid" {
             return UUID().uuidString
+        }
+
+        if name == "random" {
+            let from = arguments.count == 1 ? try Int(arguments[0].fill(row: row))! : 0
+            let to = arguments.count == 2 ? try Int(arguments[1].fill(row: row))! : try Int(arguments[0].fill(row: row))!            
+            return String(Int.random(in: from...to))
+        }
+
+        if name == "randomChoice" {
+            if arguments.isEmpty {
+                throw RuntimeError("randomChoice function requires at least one argument")
+            }
+            let choices = try arguments.map { try $0.fill(row: row) }
+            return choices.randomElement() ?? ""
         }
 
         if name == "quoted_values" {
@@ -92,13 +109,27 @@ struct FunctionPart: FormatExpr {
     func validate(header: Header?) throws {
         if let h = header {
             if !FunctionPart.internalFunctions.contains(name) && h.index(ofColumn: name) == nil {
-                throw RuntimeError("Unknown function in format: \(name). Supported columns: \(FunctionPart.internalFunctions.joined(separator: ", "))")
+                throw RuntimeError("Unknown function in format: \(name). Supported functions: \(FunctionPart.internalFunctions.joined(separator: ", "))")
+            }
+
+            if (name == "random") {
+                if arguments.count < 0 {
+                    throw RuntimeError("Function \(name) accepts one or two arguments. It should be either random(to) or random(from, to)")
+                }
+
+                if arguments.count > 2 {
+                    throw RuntimeError("Function \(name) accepts at most two arguments, got \(arguments.count). It should be either random(to) or random(from, to)")
+                }
+            }
+
+            if (name == "randomChoice") {
+                if arguments.isEmpty { throw RuntimeError("Function \(name) requires at least one argument") }
             }
         }
     }
 
     var description: String {
-        return "Function(name: \(name))"
+        return "Fun(name: \(name), arguments: \(arguments))"
     }
 }
 
@@ -124,7 +155,7 @@ struct FormatGroup: FormatExpr {
     }
 
     var description: String {
-        return "Group(parts: \(parts))"
+        return "Group(\(parts))"
     }
 
     static func == (lhs: FormatGroup, rhs: FormatGroup) -> Bool {
@@ -157,14 +188,14 @@ struct ExecPart: FormatExpr {
 }
 
 class Format {
-    static let regex: NSRegularExpression = try! NSRegularExpression(pattern: "\\$\\{([%A-Za-z0-9_\\s]+)\\}")
-    
     let original: String
     let format: any FormatExpr
 
     init(format: String) {
         self.original = format
-        self.format = Format.parse(original).0
+        let (nodes, _) = Format.parse(original)
+
+        self.format = FormatGroup(nodes)
     }
 
     func validated(header: Header?) throws -> Format {
@@ -181,55 +212,44 @@ class Format {
         fill(row: row).data(using: .utf8)!
     }
 
-    static func parse(_ input: String, from start: String.Index? = nil, until closing: Character? = nil) -> (any FormatExpr, String.Index) {
+    static func parse(_ input: String, from start: String.Index? = nil, until terminators: Set<Character> = []) -> ([any FormatExpr], String.Index) {
         var index = start ?? input.startIndex
         var nodes: [any FormatExpr] = []
         var buffer = ""
 
         while index < input.endIndex {
-            // Handle closing delimiter if needed
-            if let closing = closing, input[index] == closing {
-                if !buffer.isEmpty {
-                    nodes.append(TextPart(buffer))
-                }
-                return (FormatGroup(nodes), input.index(after: index))
+            let char = input[index]
+
+            if terminators.contains(char) {
+                if !buffer.isEmpty { nodes.append(TextPart(buffer)); buffer = "" }
+                return (nodes, input.index(after: index))
             }
 
             if input[index...].hasPrefix("${") {
-                if !buffer.isEmpty {
-                    nodes.append(TextPart(buffer))
-                    buffer = ""
-                }
+                if !buffer.isEmpty { nodes.append(TextPart(buffer)); buffer = "" }
                 index = input.index(index, offsetBy: 2)
-                let (name, newIndex) = readUntil(input, delimiter: "}", from: index)
+                let (name, newIndex) = readUntil(input, from: index, delimiter: "}")
                 if let name = name {
                     nodes.append(VarPart(name))
                 }
                 index = newIndex
 
             } else if input[index...].hasPrefix("%{") {
-                if !buffer.isEmpty {
-                    nodes.append(TextPart(buffer))
-                    buffer = ""
-                }
+                if !buffer.isEmpty { nodes.append(TextPart(buffer)); buffer = "" }
                 index = input.index(index, offsetBy: 2)
-                let (name, newIndex) = readUntil(input, delimiter: "}", from: index)
-                if let name = name {
-                    nodes.append(FunctionPart(fnName: name))
-                }
+                let (funcNode, newIndex) = parseFunction(input, from: index)
+                nodes.append(funcNode)
                 index = newIndex
+
             } else if input[index...].hasPrefix("#{") {
-                if !buffer.isEmpty {
-                    nodes.append(TextPart(buffer))
-                    buffer = ""
-                }
+                if !buffer.isEmpty { nodes.append(TextPart(buffer)); buffer = "" }
                 index = input.index(index, offsetBy: 2)
-                let (inner, newIndex) = parse(input, from: index, until: "}")
-                nodes.append(ExecPart(command: inner))
+                let (inner, newIndex) = parse(input, from: index, until: ["}"])
+                nodes.append(ExecPart(command: FormatGroup(inner)))
                 index = newIndex
 
             } else {
-                buffer.append(input[index])
+                buffer.append(char)
                 index = input.index(after: index)
             }
         }
@@ -238,10 +258,54 @@ class Format {
             nodes.append(TextPart(buffer))
         }
 
-        return (FormatGroup(nodes), index)
+        return (nodes, index)
     }
 
-    private static func readUntil(_ input: String, delimiter: Character, from start: String.Index) -> (String?, String.Index) {
+    private static func parseFunction(_ input: String, from start: String.Index) -> (any FormatExpr, String.Index) {
+        var index = start
+        var name = ""
+
+        while index < input.endIndex, input[index].isLetter || input[index].isNumber || input[index] == "_" {
+            name.append(input[index])
+            index = input.index(after: index)
+        }
+
+        skipWhitespace(input, &index)
+
+        var args: [any FormatExpr] = []
+
+        if index < input.endIndex, input[index] == "(" {
+            index = input.index(after: index)
+            while index < input.endIndex && input[index] != "}" {
+                skipWhitespace(input, &index)
+
+                if input[index] == ")" {
+                    index = input.index(after: index)
+                    break
+                }
+
+                let (argNodes, newIndex) = parse(input, from: index, until: [",", ")"])
+                if argNodes.count == 1 {
+                    args.append(argNodes[0])
+                } else {
+                    args.append(FormatGroup(argNodes))
+                }
+
+                index = newIndex
+                if index < input.endIndex, input[index] == "," {
+                    index = input.index(after: index)
+                }
+            }
+        }
+
+        guard index < input.endIndex, input[index] == "}" else {
+            fatalError("Expected closing } for function")
+        }
+
+        return (FunctionPart(name: name, arguments: args), input.index(after: index))
+    }    
+
+    private static func readUntil(_ input: String, from start: String.Index, delimiter: Character) -> (String?, String.Index) {
         var index = start
         var result = ""
 
@@ -254,5 +318,11 @@ class Format {
         }
 
         return (nil, index)
+    }
+
+    private static func skipWhitespace(_ input: String, _ index: inout String.Index) {
+        while index < input.endIndex, input[index].isWhitespace {
+            index = input.index(after: index)
+        }
     }
 }
