@@ -1,8 +1,24 @@
 import ArgumentParser
 import Foundation
 
-struct Global {
-    static var debug: Bool = false
+struct Debug {
+    // this one is set on start, so we don't care about concurrency checks
+    nonisolated(unsafe) private static var debug: Bool = false
+
+    static func enableDebug() {
+        debug = true
+        print("Debug mode enabled")
+    }
+
+    static func debug(_ message: String) {
+        if debug {            
+            print(message)
+        }
+    }
+
+    static func isDebugEnabled() -> Bool {
+        return debug
+    }
 }
 
 func buildPrinter(formatOpt: Format?, outFileFmt: FileType, outputFile: String?) throws -> TablePrinter {    
@@ -31,7 +47,7 @@ func buildPrinter(formatOpt: Format?, outFileFmt: FileType, outputFile: String?)
 }
 
 @main
-struct MainApp: ParsableCommand {
+struct MainApp: ParsableCommand {    
     static let configuration = CommandConfiguration(
         commandName: "table",
         abstract: "A utility for transforming CSV files of SQL output.",
@@ -112,8 +128,7 @@ struct MainApp: ParsableCommand {
     mutating func run() throws {
                 
         if debugEnabled {
-            Global.debug = true
-            print("Debug enabled")
+            Debug.enableDebug()
         }
         
         let userTypes = try columnTypes.map { try CellType.fromStringList($0) }
@@ -165,7 +180,7 @@ struct MainApp: ParsableCommand {
         let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }
 
         if let sortColumns {
-            let expression = try Sort(sortColumns).validated(header: table.header)            
+            let expression = try Sort(sortColumns).validated(header: table.header)
             debug("Sorting by columns: \(expression.columns.map { (name, order) in "\(name) \(order)" }.joined(separator: ","))")             
             table = try InMemoryTableView(table: table).sort(expr: expression)
         }

@@ -56,7 +56,5 @@ extension Table {
 }
 
 func debug(_ message: String) {
-    if Global.debug {
-        print(message)
-    }
+    Debug.debug(message)
 }

@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:table-cli}",
+            "name": "Debug table",
+            "program": "${workspaceFolder:table-cli}/.build/debug/table",
+            "preLaunchTask": "swift: Build Debug table"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:table-cli}",
+            "name": "Release table",
+            "program": "${workspaceFolder:table-cli}/.build/release/table",
+            "preLaunchTask": "swift: Build Release table"
+        }
+    ]
+}
