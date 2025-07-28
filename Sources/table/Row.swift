@@ -32,12 +32,21 @@ class Row {
         self.components = cells
     }
 
+    static func empty(header: Header?) -> Row {
+        let h = header ?? Header.auto(size: 0)
+        return Row(header: h, index: 0, components: h.components().map { _ in "" } )
+    }
+
     subscript(index: Int) -> String {
         components[index].value
     }
 
-    subscript(columnName: String) -> String? {
+    subscript(columnName: String) -> String? {        
         if let index = header?.index(ofColumn: columnName) {
+            if index >= components.count || index < 0 {
+                debug("Not found index: \(index) for column \(columnName) in row \(self.index) components, components: \(components). Header: \(header?.components() ?? [])")
+                return nil
+            }
             return components[index].value
         } else {
             return nil
