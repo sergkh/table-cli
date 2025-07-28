@@ -5,7 +5,7 @@ class TableSamplerTests: XCTestCase {
 
     func testSamplerOnEmptyTable() throws {
         let empty = SampledTableView(table: ParsedTable.empty(), percentage: 50)
-        XCTAssertNil(empty.next())
+        XCTAssertNil(try empty.next())
     }
 
     func testHalfSamplerOnOneRowTable() throws {
@@ -14,7 +14,7 @@ class TableSamplerTests: XCTestCase {
             percentage: 50
         )
 
-        let sampledSize = count(&smallTable)
+        let sampledSize = try count(&smallTable)
 
         XCTAssertEqual(sampledSize >= 400, true)
         XCTAssertEqual(sampledSize <= 600, true)
@@ -26,15 +26,15 @@ class TableSamplerTests: XCTestCase {
             percentage: 80
         )
 
-        let sampledSize = count(&smallTable)
+        let sampledSize = try count(&smallTable)
         
         XCTAssertEqual(sampledSize >= 700, true)
         XCTAssertEqual(sampledSize <= 900, true)
     }
 
-    func count(_ table: inout any Table) -> Int {
+    func count(_ table: inout any Table) throws -> Int {
         var count = 0
-        while table.next() != nil {
+        while try table.next() != nil {
             count += 1
         }
         return count

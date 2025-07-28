@@ -32,6 +32,10 @@ extension String {
     var isBoolean: Bool {
         return self.caseInsensitiveCompare("true") == .orderedSame || self.caseInsensitiveCompare("false") == .orderedSame
     }
+
+    var boolValue: Bool {
+        return self.caseInsensitiveCompare("true") == .orderedSame
+    }
 }
 
 extension Array {

@@ -7,13 +7,13 @@ class TableParserTests: XCTestCase {
     func testParseEmptyTable() throws {
         let emptyTable = try ParsedTable.parse(reader: ArrayLineReader(lines: []), hasHeader: nil, headerOverride: nil, delimeter: nil)
         XCTAssertEqual(emptyTable.conf.delimeter, ",")
-        XCTAssertNil(emptyTable.next())
+        XCTAssertNil(try emptyTable.next())
     }
 
     func testParseOneColumnTable() throws {
         let oneLineTable = try ParsedTable.parse(reader: ArrayLineReader(lines: [ "1,2,3" ]), hasHeader: nil, headerOverride: nil, delimeter: nil)
         XCTAssertEqual(oneLineTable.header.columnsStr(), "1,2,3")
-        XCTAssertNil(oneLineTable.next())
+        XCTAssertNil(try oneLineTable.next())
     }
 
     // TODO: fix in accordance to https://www.rfc-editor.org/rfc/rfc4180
@@ -25,7 +25,7 @@ class TableParserTests: XCTestCase {
         XCTAssertEqual(table.header.components()[0], "Column,1")
         XCTAssertEqual(table.header.components()[1], "Column,2")
         
-        let row = table.next()!
+        let row = try table.next()!
         
         XCTAssertEqual(row.components[0].value, "Val,1")
         XCTAssertEqual(row.components[1].value, "Val,2")
