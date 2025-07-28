@@ -122,7 +122,7 @@ table ./test-data/table-format.out --sort "!available,id"
 * Generate table with test data
 
 ```bash
-table --generate 10 --add id=%{uuid} --add status='%{randomChoice(on,off)}' --add amount='%{random(1,10)}'
+table --generate 10 --add id='%{uuid()}' --add status='%{randomChoice(on,off)}' --add amount='%{random(1,10)}'
 ```
 Produces:
 
