@@ -28,8 +28,8 @@ class Join {
 
   func load() throws -> Join {
     var duplicates = Set<String>()
-
-    for r in matchTable {
+    
+    while let r = try matchTable.next() {
       let colValue = r[secondColIndex]
       
       if rowsCache[colValue] != nil {

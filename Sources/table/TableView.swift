@@ -16,8 +16,8 @@ class JoinTableView: Table {
     self.join = join
   }
 
-  func next() -> Row? {
-    let row = table.next()
+  func next() throws -> Row? {
+    let row = try table.next()
     if let row {
       let joinedRow = join.matching(row: row)
       let joinedColumns = joinedRow.map{ $0.components } ?? [Cell](repeating: Cell(value: ""), count: self.join.matchTable.header.size)
@@ -49,8 +49,8 @@ class NewColumnsTableView: Table {
     self.additionalColumns = additionalColumns
   }
 
-  func next() -> Row? {
-    let row = table.next()
+  func next() throws -> Row? {
+    let row = try table.next()
 
     if let row {
       let newColumnsData = additionalColumns.map { (_, fmt) in
@@ -83,8 +83,8 @@ class ColumnsTableView: Table {
     self.header = Header(components: visibleColumns, types: types)
   }
 
-  func next() -> Row? {
-    let row = table.next()
+  func next() throws -> Row? {
+    let row = try table.next()
 
     if let row { 
       return Row(
@@ -112,8 +112,8 @@ class DistinctTableView: Table {
     self.header = table.header
   }
 
-  func next() -> Row? {
-    var row = table.next()
+  func next() throws -> Row? {
+    var row = try table.next()
 
     while let curRow = row {
       let values = distinctColumns.map { col in curRow[col] ?? "" }
@@ -123,7 +123,7 @@ class DistinctTableView: Table {
         return curRow
       }
 
-      row = table.next()
+      row = try table.next()
     }
     
     return nil
@@ -142,8 +142,8 @@ class SampledTableView: Table {
     self.header = table.header
   }
   
-  func next() -> Row? {    
-    var row = table.next()
+  func next() throws -> Row? {    
+    var row = try table.next()
 
     while let curRow = row {
       let useRow = sample()
@@ -152,7 +152,7 @@ class SampledTableView: Table {
         return curRow
       }
 
-      row = table.next()
+      row = try table.next()
     }
     
     return nil
@@ -180,12 +180,12 @@ class InMemoryTableView: InMemoryTable {
     self.table = table
   }
 
-  func load() {
+  func load() throws {
     if loaded {
       return
     }
     
-    while let row = table.next() {
+    while let row = try table.next() {
       rows.append(row)
     }
 
@@ -193,7 +193,7 @@ class InMemoryTableView: InMemoryTable {
   }
 
   func sort(expr: Sort) throws -> any Table {
-    load()
+    try load()
     
     try rows.sort { (row1, row2) in
       for (col, order) in expr.columns {

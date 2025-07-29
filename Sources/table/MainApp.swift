@@ -4,15 +4,18 @@ import Foundation
 struct Debug {
     // this one is set on start, so we don't care about concurrency checks
     nonisolated(unsafe) private static var debug: Bool = false
+    private static let standardError = FileHandle.standardError
+    private static let nl = "\n".data(using: .utf8)!
 
     static func enableDebug() {
         debug = true
-        print("Debug mode enabled")
+        Debug.debug("Debug mode enabled")
     }
 
     static func debug(_ message: String) {
         if debug {            
-            print(message)
+            standardError.write(message.data(using: .utf8)!)
+            standardError.write(nl)
         }
     }
 
@@ -47,7 +50,8 @@ func buildPrinter(formatOpt: Format?, outFileFmt: FileType, outputFile: String?)
 }
 
 @main
-struct MainApp: ParsableCommand {    
+@available(macOS 10.15, macCatalyst 13, iOS 13, tvOS 13, watchOS 6, *)
+struct MainApp: AsyncParsableCommand {    
     static let configuration = CommandConfiguration(
         commandName: "table",
         abstract: "A utility for transforming CSV files of SQL output.",
@@ -58,7 +62,13 @@ struct MainApp: ParsableCommand {
               table in.csv --print "${name} ${last_name}: ${email}"
 
               Filter rows and display only specified columns:
-              table in.csv --filter 'available>5' --columns 'item,available'
+              table in.csv --filter 'available>5' --columns 'item,available'.
+
+              Some options like --add or --print supports expressions that can be used to substitute column values or execute commands:
+                - ${column_name} - substitutes column value. Example: ${name} will be substituted with the value of the 'name' column.
+                - #{command} - executes bash command and substitutes its output. Example: #{echo "hello ${name}"}
+                - %{function} - executes internal functions. Supported functions:
+                    \(Functions.all.map { "\($0.description)" }.joined(separator: "\n\t"))
             """,
         version: appVersion     
     )
@@ -104,7 +114,12 @@ struct MainApp: ParsableCommand {
     @Option(name: [.customShort("f"), .customLong("filter")], help: "Filter rows by a single value criteria. Example: country=UA or size>10. Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains.")
     var filters: [String] = []
 
-    @Option(name: .customLong("add"), help: "Adds a new column from a shell command output allowing to substitute other column values into it. Expressions ${name} and #{cmd} are substituted by column value and command result respectively. Example: --add 'col_name=#{curl http://email-db.com/${email}}'.")
+    @Option(
+        name: .customLong("add"), 
+        help: ArgumentHelp(            
+            "Adds a new column from a shell command output allowing to substitute other column values into it",
+            discussion: "Example: --add 'col_name=#{curl http://email-db.com/${email}}'")
+    )
     var addColumns: [String] = []
 
     @Option(name: .customLong("distinct"), help: "Returns only distinct values for the specified column set. Example: --distinct name,city_id.")
@@ -125,7 +140,7 @@ struct MainApp: ParsableCommand {
     @Option(name: .customLong("generate"), help: "Generates a sample empty table with the specified number of rows. Example: '--generate 1000 --add id=%{uuid}' will generate a table of UUIDs with 1000 rows.")
     var generate: Int?
 
-    mutating func run() throws {
+    mutating func run() async throws {
                 
         if debugEnabled {
             Debug.enableDebug()
@@ -207,7 +222,7 @@ struct MainApp: ParsableCommand {
         var skip = skipLines ?? 0
         var limit = limitLines ?? Int.max
         
-        while let row = table.next() {
+        while let row = try table.next() {
             if let parsedFilters {
                 if (!parsedFilters.allSatisfy { $0.apply(row: row) }) { 
                     continue 

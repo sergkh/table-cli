@@ -1,8 +1,8 @@
 import Foundation
 
-protocol Table: Sequence<Row>, IteratorProtocol<Row> {
+protocol Table {
     var header: Header { get }
-    mutating func next() -> Row?
+    mutating func next() throws -> Row?
 }
 
 protocol InMemoryTable: Table {
@@ -55,7 +55,7 @@ class ParsedTable: Table {
         }        
     }
 
-    func next() -> Row? {
+    func next() throws -> Row? {
         line += 1
 
         var row = nextLine()
@@ -66,6 +66,10 @@ class ParsedTable: Table {
 
         return try! row.map { row in 
             let components = try ParsedTable.readRowComponents(row, type: conf.type, delimeter: conf.delimeter, trim: conf.trim)
+
+            if (components.count != conf.header.size) {
+                debug("WARN: Row \(line) has \(components.count) components, but header has \(conf.header.size) columns. Row:\n'\(row)'")
+            }
 
             return Row(
                 header: conf.header,
