@@ -126,12 +126,12 @@ class ParsedTable: Table {
         if let row = reader.readLine() {
             if row.matches(ParsedTable.ownHeaderPattern) {
                 debug("Detected tool own table format")
-                let parsedHeader = try reader.readLine().map { 
-                    try! Header(data: $0, delimeter: "│", trim: true, hasOuterBorders: true) 
-                }.orThrow(RuntimeError("Failed to parse own table header"))
+                // Note the use of long pipe │ instead of short one | 
+                let parsedHeader = try reader.readLine().map {  try! Header(data: $0, delimeter: "│", trim: true, hasOuterBorders: true) }.orThrow(RuntimeError("Failed to parse own table header"))
 
-                let dataRows = [reader.readLine(), reader.readLine(), reader.readLine()].compactMap{$0}.filter { !ParsedTable.technicalRow($0) }
-                let types = userTypes ?? CellType.infer(rows: dataRows.map { try! ParsedTable.readRowComponents($0, type: .cassandraSql, delimeter: "|", trim: true) })
+                let dataRows = [reader.readLine(), reader.readLine(), reader.readLine(), reader.readLine()].compactMap{$0}.filter { !ParsedTable.technicalRow($0) }
+                
+                let types = userTypes ?? CellType.infer(rows: dataRows.map { try! ParsedTable.readRowComponents($0, type: .table, delimeter: "│", trim: true) })
                 let header = (headerOverride ?? parsedHeader).withTypes(types)
 
                 return (TableConfig(header: header, type: FileType.table, delimeter: "│", trim: true), dataRows)
@@ -196,7 +196,7 @@ class ParsedTable: Table {
         }
     }
 
-    private static func readRowComponents(_ row: String, type: FileType, delimeter: String, trim: Bool) throws -> [String] {
+    private static func readRowComponents(_ row: String, type: FileType, delimeter: String, trim: Bool) throws -> [String] {        
         if type == .csv {
             return try! Csv.parseLine(row, delimeter: delimeter)
         } 
