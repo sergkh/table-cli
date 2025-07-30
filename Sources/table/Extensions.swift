@@ -50,9 +50,9 @@ extension Array {
 }
 
 extension Table {
-    func memoized() -> any Table {
+    func memoized() -> InMemoryTableView {
         if self is InMemoryTableView {
-            return self
+            return self as! InMemoryTableView
         } else {
             return InMemoryTableView(table: self)
         }

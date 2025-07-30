@@ -130,6 +130,105 @@ class DistinctTableView: Table {
   }
 }
 
+/** Table view with filtered rows to allow only duplicate values for certain columns */
+class DuplicateTableView: Table {
+  var table: InMemoryTableView
+  let duplicateColumns: [String]
+  let header: Header
+
+  private var entriesCount: Dictionary<[String], Int> = [:]
+
+  init(table: any Table, duplicateColumns: [String]) {
+    self.table = table.memoized()
+    self.duplicateColumns = duplicateColumns
+    self.header = table.header
+    countEntries()
+  }
+
+  func next() throws -> Row? {    
+    var row = table.next()
+
+    while let curRow = row {
+      let values = duplicateColumns.map { col in curRow[col] ?? "" }
+      
+      if entriesCount[values] != nil {        
+        return curRow
+      }
+
+      row = table.next()
+    }
+    
+    return nil
+  }
+
+  private func countEntries() {
+    var count = 0
+
+    while let row = table.next() {
+      let values = duplicateColumns.map { col in row[col] ?? "" }
+      entriesCount[values, default: 0] += 1
+      count += 1
+    }
+  
+    // Filter out only duplicates
+    entriesCount = entriesCount.filter { $0.value > 1 }
+    
+    debug("DuplicateTableView: Processed \(count) rows. Found \(entriesCount.count) duplicate entries for columns: \(duplicateColumns.joined(separator: ", "))")  
+    
+    // Reset the cursor to the beginning
+    table.rewind()
+  }
+}
+
+class GroupedTableView: Table {
+  var table: any Table
+  let groupBy: [String]
+  let header: Header
+  private var idx = -1
+
+  private var groupIterator: Dictionary<[String], [Row]>.Iterator?
+
+  init(table: any Table, groupBy: [String]) {
+    self.table = table
+    self.groupBy = groupBy
+    self.header = table.header
+    groupIterator = loadGroups()
+  }
+
+  func next() throws -> Row? {
+    if let entry = groupIterator!.next() {
+      let groupKey = entry.key
+      let group = entry.value
+
+      // Create a new row with the group key as the first columns
+      let components = header.components().map { name in 
+        if let index = groupBy.firstIndex(of: name) {
+          return groupKey[index]
+        } else {
+          return group.map { $0[name] ?? "" }.joined(separator: ", ")
+        }
+      }
+
+      idx += 1
+      return Row(header: header, index: idx, components: components)
+    } else {
+      return nil
+    }    
+  }
+
+  private func loadGroups() -> Dictionary<[String], [Row]>.Iterator {
+    // TODO: make an ordered collection
+    var groups: [[String]: [Row]] = [:]
+
+    while let row = try? table.next() {
+      let key = groupBy.map { row[$0] ?? "" }
+      groups[key, default: []].append(row)
+    }
+    
+    return groups.makeIterator()
+  }
+}
+
 /** Table view that have randomized sample of the rows. */
 class SampledTableView: Table {
   var table: any Table
@@ -213,6 +312,8 @@ class InMemoryTableView: InMemoryTable {
   }
 
   func next() -> Row? {
+    if(!loaded) { try? load() }
+
     if cursor < rows.count {
       let row = rows[cursor]
       cursor += 1

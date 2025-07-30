@@ -76,7 +76,7 @@ enum CellType {
       }
     }
 
-    debug("Infered cell types: \(CellType.toString(types))")
+    debug("Inferred cell types: \(CellType.toString(types))")
 
     return types
   }

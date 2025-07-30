@@ -125,6 +125,12 @@ struct MainApp: AsyncParsableCommand {
     @Option(name: .customLong("distinct"), help: "Returns only distinct values for the specified column set. Example: --distinct name,city_id.")
     var distinctColumns: [String] = []
 
+    @Option(name: .customLong("duplicate"), help: "Outputs only duplicate rows by the specified columns. Example: --duplicates name,city_id will find duplicates by both name and city_id columns.")
+    var duplicateColumns: [String] = []
+
+    @Option(name: .customLong("group-by"), help: "Groups rows by the specified columns. Example: --group-by city_id,region.")
+    var groupBy: [String] = []
+
     @Option(name: .customLong("join"), help: "Speficies a second file path to join with the current one. Joining column is the first one for both tables or can be specified by the --on option.")
     var joinFile: String?
 
@@ -190,6 +196,16 @@ struct MainApp: AsyncParsableCommand {
         if !distinctColumns.isEmpty {
             try distinctColumns.forEach { if table.header.index(ofColumn: $0) == nil { throw RuntimeError("Column \($0) in distinct clause is not found in the table") } }
             table = DistinctTableView(table: table, distinctColumns: distinctColumns)
+        }
+
+        if !duplicateColumns.isEmpty {
+            try duplicateColumns.forEach { if table.header.index(ofColumn: $0) == nil { throw RuntimeError("Column \($0) in distinct clause is not found in the table") } }
+            table = DuplicateTableView(table: table, duplicateColumns: duplicateColumns)
+        }
+
+        if !groupBy.isEmpty {
+            try groupBy.forEach { if table.header.index(ofColumn: $0) == nil { throw RuntimeError("Column \($0) in group-by clause is not found in the table") } }
+            table = GroupedTableView(table: table, groupBy: groupBy)
         }
 
         let formatOpt = try printFormat.map { try Format(format: $0).validated(header: table.header) }

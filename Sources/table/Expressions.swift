@@ -140,7 +140,8 @@ class Functions {
     Random(),
     RandomChoice(),
     Prefix(),
-    Array()
+    Array(),
+    Distinct()
   ]
 
   static func find(name: String) -> (any InternalFunction)? {
@@ -308,6 +309,27 @@ class Functions {
 
     var description: String {
         return "array(str) – returns a Cassandra representation of an array with the provided elements. Requires a comma-separated list of arguments or at least a single argument that will be split by commas"
+    }
+  }
+
+  class Distinct: InternalFunction {
+    var name: String { "distinct" }
+
+    func validate(header: Header?, arguments: [any FormatExpr]) throws {
+        if arguments.count != 1 {
+            throw RuntimeError("Function \(name) requires exactly one argument")
+        }
+    }
+
+    func apply(row: Row, arguments: [any FormatExpr]) throws -> String {
+        let arguments = try arguments.map { try $0.fill(row: row) }
+        let elements = arguments.count > 1 ? arguments : arguments[0].split(separator: Character(",")).map { String($0).trimmingCharacters(in: .whitespaces) }  
+
+        return Set(elements).joined(separator: ",")
+    }
+
+    var description: String {
+        return "distinct(str) – returns a distinct element from a comma separated list of elements. Requires a single argument that will be split by commas"
     }
   }
 }
