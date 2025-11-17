@@ -139,9 +139,14 @@ class Functions {
     Uuid(),
     Random(),
     RandomChoice(),
+    RandomDate(),
     Prefix(),
     Array(),
-    Distinct()
+    Distinct(),
+    Sum(),
+    Max(),
+    Min(),
+    Replace()
   ]
 
   static func find(name: String) -> (any InternalFunction)? {
@@ -263,6 +268,54 @@ class Functions {
     }
   }
 
+  class RandomDate: InternalFunction {
+    var name: String { "randomDate" }
+
+    func validate(header: Header?, arguments: [any FormatExpr]) throws {
+        if arguments.count < 2 {
+            throw RuntimeError("Function \(name) requires 2 arguments: start and end dates in the format YYYY-MM-DD or YYYY-MM-DD HH:MM:SS")
+        }
+
+        if !(try arguments.prefix(2).map { try $0.fill(row: Row.empty()).isDate }.allSatisfy({ $0 })) {
+            throw RuntimeError("Function \(name) requires date arguments in the format YYYY-MM-DD or YYYY-MM-DD HH:MM:SS, got \(arguments.map { try! $0.fill(row: Row.empty()) })")
+        }
+    }
+
+    func apply(row: Row, arguments: [any FormatExpr]) throws -> String {
+        let interval = try arguments.prefix(2).map { try $0.fill(row: row).asDate! }
+        let randomTimeInterval = TimeInterval.random(in: interval[0].timeIntervalSince1970...interval[1].timeIntervalSince1970)
+        let randomDate = Date(timeIntervalSince1970: randomTimeInterval)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = arguments.count == 3 ? try arguments[2].fill(row: row) : "yyyy-MM-dd HH:mm:ss"
+        return dateFormatter.string(from: randomDate)
+    }
+
+    var description: String {
+        return "randomDate(from, to, format?) – returns a random date from the given interval. Optionally accepts format for the output, with default 'yyyy-MM-dd HH:mm:ss'"
+    }
+  }
+
+  class Replace: InternalFunction {
+    var name: String { "replace" }
+
+    func validate(header: Header?, arguments: [any FormatExpr]) throws {
+        if arguments.count != 3 {
+            throw RuntimeError("Function \(name) requires 3 arguments: a string to modify, string to replace and a replacement string, got \(arguments.count): \(arguments)")
+        }
+    }
+
+    func apply(row: Row, arguments: [any FormatExpr]) throws -> String {
+        let str = try arguments[0].fill(row: row)
+        let target = try arguments[1].fill(row: row).trimmingCharacters(in: CharacterSet.init(charactersIn: "\"'"))
+        let replacement = try arguments[2].fill(row: row).trimmingCharacters(in: CharacterSet.init(charactersIn: "\"'"))
+        return str.replacingOccurrences(of: target, with: replacement)        
+    }
+
+    var description: String {
+        return "replace(str,what,replacement) – returns a string with all occurrences of 'what' replaced with 'replacement'"
+    }
+  }
+
   class Prefix: InternalFunction {
     var name: String { "prefix" }
 
@@ -299,12 +352,9 @@ class Functions {
     }
 
     func apply(row: Row, arguments: [any FormatExpr]) throws -> String {
-        let arguments = try arguments.map { try $0.fill(row: row) }
-        let elements = arguments.count > 1 ? arguments : arguments[0].split(separator: Character(",")).map { String($0).trimmingCharacters(in: .whitespaces) }
-
+        let elements = try Functions.arrayArg(row: row, arguments: arguments)
         let quoted = !elements.allSatisfy { $0.isNumber || $0.isBoolean || $0.caseInsensitiveCompare("null") == .orderedSame }
-
-        return "[" + elements.map { quoted ? "'\($0)'" : $0 }.joined(separator: ", ") + "]"
+        return elements.map { quoted ? "'\($0)'" : $0 }.joined(separator: ", ")
     }
 
     var description: String {
@@ -322,14 +372,147 @@ class Functions {
     }
 
     func apply(row: Row, arguments: [any FormatExpr]) throws -> String {
-        let arguments = try arguments.map { try $0.fill(row: row) }
-        let elements = arguments.count > 1 ? arguments : arguments[0].split(separator: Character(",")).map { String($0).trimmingCharacters(in: .whitespaces) }  
-
-        return Set(elements).joined(separator: ",")
+        let elements = try Functions.arrayArg(row: row, arguments: arguments)
+        
+        // Preserve order by keeping first occurrence of each element
+        var seen = Set<String>()
+        var ordered: [String] = []
+        for element in elements {
+            if !seen.contains(element) {
+                seen.insert(element)
+                ordered.append(element)
+            }
+        }
+        return ordered.joined(separator: ",")
     }
 
     var description: String {
         return "distinct(str) – returns a distinct element from a comma separated list of elements. Requires a single argument that will be split by commas"
     }
   }
+
+  class Sum: InternalFunction {
+    var name: String { "sum" }
+
+    func validate(header: Header?, arguments: [any FormatExpr]) throws {
+        if arguments.isEmpty {
+            throw RuntimeError("Function \(name) requires at least one argument")
+        }
+    }
+
+    func apply(row: Row, arguments: [any FormatExpr]) throws -> String {
+        let elements = try Functions.arrayArg(row: row, arguments: arguments)
+        
+        var sum: Double = 0.0
+        for element in elements {
+            if let value = Double(element) {
+                sum += value
+            } else {
+                throw RuntimeError("Function \(name) requires numeric values, got non-numeric value: \(element)")
+            }
+        }
+        
+        // Return as integer if it's a whole number, otherwise as decimal
+        if sum.truncatingRemainder(dividingBy: 1) == 0 {
+            return String(Int(sum))
+        } else {
+            return String(sum)
+        }
+    }
+
+    var description: String {
+        return "sum(...) – returns the sum of numeric values. Accepts multiple arguments or a comma-separated list of numbers"
+    }
+  }
+
+  class Max: InternalFunction {
+    var name: String { "max" }
+
+    func validate(header: Header?, arguments: [any FormatExpr]) throws {
+        if arguments.isEmpty {
+            throw RuntimeError("Function \(name) requires at least one argument")
+        }
+    }
+
+    func apply(row: Row, arguments: [any FormatExpr]) throws -> String {
+        let elements = try Functions.arrayArg(row: row, arguments: arguments)
+        
+        var maxValue: Double?
+        for element in elements {
+            if let value = Double(element) {
+                if let currentMax = maxValue {
+                    maxValue = max(currentMax, value)
+                } else {
+                    maxValue = value
+                }
+            } else {
+                throw RuntimeError("Function \(name) requires numeric values, got non-numeric value: \(element)")
+            }
+        }
+        
+        guard let result = maxValue else {
+            throw RuntimeError("Function \(name) requires at least one numeric value")
+        }
+        
+        // Return as integer if it's a whole number, otherwise as decimal
+        if result.truncatingRemainder(dividingBy: 1) == 0 {
+            return String(Int(result))
+        } else {
+            return String(result)
+        }
+    }
+
+    var description: String {
+        return "max(...) – returns the maximum of numeric values. Accepts multiple arguments or a comma-separated list of numbers"
+    }
+  }
+
+  class Min: InternalFunction {
+    var name: String { "min" }
+
+    func validate(header: Header?, arguments: [any FormatExpr]) throws {
+        if arguments.isEmpty {
+            throw RuntimeError("Function \(name) requires at least one argument")
+        }
+    }
+
+    func apply(row: Row, arguments: [any FormatExpr]) throws -> String {
+        let elements = try Functions.arrayArg(row: row, arguments: arguments)
+        
+        var minValue: Double?
+        for element in elements {
+            if let value = Double(element) {
+                if let currentMin = minValue {
+                    minValue = min(currentMin, value)
+                } else {
+                    minValue = value
+                }
+            } else {
+                throw RuntimeError("Function \(name) requires numeric values, got non-numeric value: \(element)")
+            }
+        }
+        
+        guard let result = minValue else {
+            throw RuntimeError("Function \(name) requires at least one numeric value")
+        }
+        
+        // Return as integer if it's a whole number, otherwise as decimal
+        if result.truncatingRemainder(dividingBy: 1) == 0 {
+            return String(Int(result))
+        } else {
+            return String(result)
+        }
+    }
+
+    var description: String {
+        return "min(...) – returns the minimum of numeric values. Accepts multiple arguments or a comma-separated list of numbers"
+    }
+  }
+    
+    // Utility function to get elements from a comma-separated list of arguments
+    static func arrayArg(row: Row, arguments: [any FormatExpr]) throws -> [String] {
+        let arguments = try arguments.map { try $0.fill(row: row) }
+        return arguments.count > 1 ? arguments : arguments[0].split(separator: Character(",")).map { String($0).trimmingCharacters(in: .whitespaces) }
+    }
+
 }

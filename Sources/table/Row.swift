@@ -32,7 +32,7 @@ class Row {
         self.components = cells
     }
 
-    static func empty(header: Header?) -> Row {
+    static func empty(header: Header? = nil) -> Row {
         let h = header ?? Header.auto(size: 0)
         return Row(header: h, index: 0, components: h.components().map { _ in "" } )
     }

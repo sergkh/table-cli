@@ -64,10 +64,10 @@ struct MainApp: AsyncParsableCommand {
               Filter rows and display only specified columns:
               table in.csv --filter 'available>5' --columns 'item,available'.
 
-              Some options like --add or --print supports expressions that can be used to substitute column values or execute commands:
+              Some options like --add or --print support expressions that can be used to substitute column values or execute commands. Commands and functions also support nesting of expressions.
                 - ${column_name} - substitutes column value. Example: ${name} will be substituted with the value of the 'name' column.
                 - #{command} - executes bash command and substitutes its output. Example: #{echo "hello ${name}"}
-                - %{function} - executes internal functions. Supported functions:
+                - %{function} - executes internal functions. Example %{distinct(${items})} Supported functions:
                     \(Functions.all.map { "\($0.description)" }.joined(separator: "\n\t"))
             """,
         version: appVersion     
@@ -111,7 +111,14 @@ struct MainApp: AsyncParsableCommand {
     @Option(name: [.customLong("as")], help: "Prints output in the specified format. Supported formats: table (default) or csv.")
     var asFormat: String? 
 
-    @Option(name: [.customShort("f"), .customLong("filter")], help: "Filter rows by a single value criteria. Example: country=UA or size>10. Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains.")
+    @Option(name: [.customShort("f"), .customLong("filter")], 
+                help: ArgumentHelp(
+                    "Filter rows by a single value criteria. Example: --filter 'country=UA',  --filter 'size>10'",
+                    discussion: """
+                        Supported comparison operations: '=' - equal,'!=' - not equal, < - smaller, <= - smaller or equal, > - bigger, >= - bigger or equal, '^=' - starts with, '$=' - ends with, '~=' - contains. 
+                        To invert filter place ! before the filter expression, e.g. --filter '!country=UA' will return all rows where country is not equal to UA.
+                        """)
+                )
     var filters: [String] = []
 
     @Option(
@@ -125,7 +132,7 @@ struct MainApp: AsyncParsableCommand {
     @Option(name: .customLong("distinct"), help: "Returns only distinct values for the specified column set. Example: --distinct name,city_id.")
     var distinctColumns: [String] = []
 
-    @Option(name: .customLong("duplicate"), help: "Outputs only duplicate rows by the specified columns. Example: --duplicates name,city_id will find duplicates by both name and city_id columns.")
+    @Option(name: .customLong("duplicate"), help: "Outputs only duplicate rows by the specified columns. Example: --duplicate name,city_id will find duplicates by both name and city_id columns.")
     var duplicateColumns: [String] = []
 
     @Option(name: .customLong("group-by"), help: "Groups rows by the specified columns. Example: --group-by city_id,region.")

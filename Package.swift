@@ -5,8 +5,14 @@ import PackageDescription
 
 let package = Package(
     name: "table",
+    platforms: [
+        .macOS(.v10_15),
+        .iOS(.v13),
+        .tvOS(.v13),
+        .watchOS(.v6)
+    ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.6.1")
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.6.2")
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
