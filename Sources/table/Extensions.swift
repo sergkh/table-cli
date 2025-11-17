@@ -24,9 +24,7 @@ extension String {
     }
 
     var isDate: Bool {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss" // Adjust as needed for your date format
-        return dateFormatter.date(from: self.replacingOccurrences(of: "T", with: " ")) != nil
+        asDate != nil
     }
 
     var isBoolean: Bool {
@@ -35,6 +33,26 @@ extension String {
 
     var boolValue: Bool {
         return self.caseInsensitiveCompare("true") == .orderedSame
+    }
+
+    var asDate: Date? {
+        let formats = ["yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss"]
+        
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = .current
+        
+        for format in formats {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: 
+                    self.replacingOccurrences(of: "T", with: " ")
+                        .replacingOccurrences(of: "'", with: "")
+                        .replacingOccurrences(of: "\"", with: "")) {
+                return date
+            }
+        }
+        
+        return nil
     }
 }
 

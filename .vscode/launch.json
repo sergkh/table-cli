@@ -6,8 +6,9 @@
             "args": [],
             "cwd": "${workspaceFolder:table-cli}",
             "name": "Debug table",
-            "program": "${workspaceFolder:table-cli}/.build/debug/table",
-            "preLaunchTask": "swift: Build Debug table"
+            "preLaunchTask": "swift: Build Debug table",
+            "target": "table",
+            "configuration": "debug"
         },
         {
             "type": "swift",
@@ -15,8 +16,9 @@
             "args": [],
             "cwd": "${workspaceFolder:table-cli}",
             "name": "Release table",
-            "program": "${workspaceFolder:table-cli}/.build/release/table",
-            "preLaunchTask": "swift: Build Release table"
+            "preLaunchTask": "swift: Build Release table",
+            "target": "table",
+            "configuration": "release"
         }
     ]
 }
