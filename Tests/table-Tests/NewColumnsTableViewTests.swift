@@ -10,7 +10,7 @@ class NewColumnsTableViewTests: XCTestCase {
         ], header: ["name", "age"])
         
         let format = try Format(format: "StaticValue").validated(header: nil)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("status", format)]
         )
@@ -38,7 +38,7 @@ class NewColumnsTableViewTests: XCTestCase {
         let format1 = try Format(format: "Active").validated(header: nil)
         let format2 = try Format(format: "Premium").validated(header: nil)
         
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [
                 ("status", format1),
@@ -64,7 +64,7 @@ class NewColumnsTableViewTests: XCTestCase {
         ], header: ["name", "age"])
         
         let format = try Format(format: "Name: ${name}, Age: ${age}").validated(header: table.header)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("info", format)]
         )
@@ -92,7 +92,7 @@ class NewColumnsTableViewTests: XCTestCase {
         ], header: ["name", "age"])
         
         let format = try Format(format: "Header: %{header()}").validated(header: table.header)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("header_info", format)]
         )
@@ -113,7 +113,7 @@ class NewColumnsTableViewTests: XCTestCase {
         ], header: ["name", "age", "score"])
         
         let format = try Format(format: "Sum: %{sum(${age},${score})}").validated(header: table.header)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("total", format)]
         )
@@ -131,7 +131,7 @@ class NewColumnsTableViewTests: XCTestCase {
         let table = ParsedTable.empty()
         
         let format = try Format(format: "NewColumn").validated(header: nil)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("new_col", format)]
         )
@@ -148,7 +148,7 @@ class NewColumnsTableViewTests: XCTestCase {
         ], header: ["name"])
         
         let format = try Format(format: "Extra").validated(header: nil)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("extra", format)]
         )
@@ -174,7 +174,7 @@ class NewColumnsTableViewTests: XCTestCase {
         let varFormat = try Format(format: "${name}").validated(header: table.header)
         let funcFormat = try Format(format: "%{values()}").validated(header: table.header)
         
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [
                 ("static_col", staticFormat),
@@ -202,7 +202,7 @@ class NewColumnsTableViewTests: XCTestCase {
         let format2 = try Format(format: "Second").validated(header: nil)
         let format3 = try Format(format: "Third").validated(header: nil)
         
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [
                 ("first", format1),
@@ -226,7 +226,7 @@ class NewColumnsTableViewTests: XCTestCase {
         ], header: ["name"])
         
         let format = try Format(format: "").validated(header: nil)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("empty", format)]
         )
@@ -241,7 +241,7 @@ class NewColumnsTableViewTests: XCTestCase {
         let table = ParsedTable.fromArray([["Alice"]], header: ["name"])
         
         let format = try Format(format: "  Padded  ").validated(header: nil)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("padded", format)]
         )
@@ -256,7 +256,7 @@ class NewColumnsTableViewTests: XCTestCase {
         let table = ParsedTable.fromArray([["Alice"]], header: ["name"])
         
         let format = try Format(format: "Value: $100 & 50%").validated(header: nil)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("special", format)]
         )
@@ -273,7 +273,7 @@ class NewColumnsTableViewTests: XCTestCase {
         ], header: ["name", "age"])
         
         let format = try Format(format: "Extra").validated(header: nil)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("extra", format)]
         )
@@ -292,7 +292,7 @@ class NewColumnsTableViewTests: XCTestCase {
         ], header: ["name", "age", "score"])
         
         let format = try Format(format: "Max: %{max(${age},${score})}").validated(header: table.header)
-        var newColumnsTable = NewColumnsTableView(
+        let newColumnsTable = NewColumnsTableView(
             table: table,
             additionalColumns: [("max_value", format)]
         )
