@@ -57,9 +57,7 @@ Steve Pitt
 * Showing only distinct data for a column
 * Sorting by the specified columns
 * Data generation
-
-## Planned Features
-* Reduce functions
+* Diffing two tables by the specified columns
 
 # Installation
 
@@ -119,6 +117,21 @@ table file1.csv --join file2.csv --on 'id=product_id'
 table ./test-data/table-format.out --sort "!available,id"
 ```
 
+* Diff two tables by the 'id' column:
+
+```bash
+table file1.csv --diff file2.csv --on 'id=id'
+```
+Produces:
+
+```
+╭────┬────────────┬───────────┬───────────╮
+│ id │ first_name │ last_name │ _source   │
+├────┼────────────┼───────────┼───────────┤
+│ 2  │ Mary       │ McAdams   │ left      │
+╰────┴────────────┴───────────┴───────────╯
+```
+
 * Generate table with test data
 
 ```bash
@@ -148,6 +161,12 @@ Outputs:
 INSERT INTO orders (id, amound, status) VALUES ('BCDABED0-A4EB-4C90-9423-4AA0269A39D7', 266, 'pending');
 INSERT INTO orders (id, amound, status) VALUES ('64FC986A-93A1-4579-B7F5-896CD7757AE8', 462, 'failed');
 INSERT INTO orders (id, amound, status) VALUES ('74CB99C8-D23F-4081-901B-8634187E4269', 529, 'ok');
+```
+
+* For working with JSONL files (one JSON object per line) it can be combined with the `jq` tool (no nesting yet):
+
+```bash
+cat objects.jsonl | jq --slurp -r '(map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows | $cols, $rows[] | @csv' | table
 ```
 
 ## Building from source

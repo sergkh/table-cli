@@ -141,8 +141,14 @@ struct MainApp: AsyncParsableCommand {
     @Option(name: .customLong("join"), help: "Speficies a second file path to join with the current one. Joining column is the first one for both tables or can be specified by the --on option.")
     var joinFile: String?
 
-    @Option(name: .customLong("on"), help: "Speficies column names to join on. Requires --join option. Syntax {table1 column}={table 2 column}. Example: --on city_id=id.")
+    @Option(name: .customLong("on"), help: "Speficies column names to join or diff on. Requires --join or --diff option. Syntax {table1 column}={table 2 column}. Example: --on city_id=id.")
     var joinCriteria: String?
+
+    @Option(name: .customLong("diff"), help: "Specifies a second file path to diff with the current one. Shows rows in first table that don't exist in second table by default. Use --diff-mode to control behavior.")
+    var diffFile: String?
+
+    @Option(name: .customLong("diff-mode"), help: "Controls diff behavior. Options: left - show rows only in first table, right - show rows only in second table, both (default) - show rows from both tables with a marker column.")
+    var diffMode: String?
 
     @Option(name: .customLong("sort"), help: "Sorts output by the specified columns. Example: --sort column1,column2. Use '!' prefix to sort in descending order.")
     var sortColumns: String?
@@ -198,6 +204,13 @@ struct MainApp: AsyncParsableCommand {
 
         if let joinFile {
             table = JoinTableView(table: table, join: try Join.parse(joinFile, joinOn: joinCriteria, firstTable: table))
+        }
+
+        if let diffFile {
+            if joinFile != nil {
+                throw RuntimeError("--join and --diff options cannot be used together")
+            }
+            table = DiffTableView(table: table, diff: try Diff.parse(diffFile, diffOn: joinCriteria, noInHeader: noInHeader, firstTable: table, mode: diffMode))
         }
 
         if !distinctColumns.isEmpty {

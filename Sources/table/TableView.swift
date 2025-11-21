@@ -262,6 +262,127 @@ class SampledTableView: Table {
   }
 }
 
+/** Table view for diffing two tables */
+class DiffTableView: Table {
+    var table: any Table
+    let diff: Diff
+    let header: Header
+
+    private var memoizedTable: InMemoryTableView?
+    private var firstTableCache: Set<String>?
+    private var filteredSecondTableRows: [Row] = []
+    private var secondTableCursor: Int = 0
+    private var firstTableRows: [Row] = []
+    private var firstTableCursor: Int = 0
+    private var firstTableExhausted: Bool = false
+    
+    init(table: any Table, diff: Diff) {
+        self.table = table
+        self.diff = diff
+        
+        if diff.mode == .both {
+            self.header = Header(components: ["_source"], types: [.string]) + table.header
+        } else {
+            self.header = table.header
+        }
+        
+        if diff.mode == .right || diff.mode == .both {
+            memoizedTable = table.memoized()
+            try? memoizedTable?.load()
+            buildFirstTableCache()
+            filterSecondTableRows()
+        }
+    }
+    
+    func next() throws -> Row? {
+        switch diff.mode {
+        case .left:
+            var row = try table.next()
+            while let curRow = row {
+                if !diff.exists(row: curRow) {
+                    return curRow
+                }
+                row = try table.next()
+            }
+            return nil
+            
+        case .right:
+            return nextFromSecondTable()
+            
+        case .both:
+            if !firstTableExhausted {
+                while firstTableCursor < firstTableRows.count {
+                    let curRow = firstTableRows[firstTableCursor]
+                    firstTableCursor += 1
+                    
+                    if !diff.exists(row: curRow) {
+                        // Add marker column
+                        let markerCell = Cell(value: "left", type: .string)
+                        return Row(
+                            header: header,
+                            index: curRow.index,
+                            cells: [markerCell] + curRow.components
+                        )
+                    }
+                }
+                firstTableExhausted = true
+            }
+            
+            return nextFromSecondTable()
+        }
+    }
+    
+    private func buildFirstTableCache() {
+        guard let memoized = memoizedTable else { return }
+        
+        firstTableCache = Set<String>()
+        memoized.rewind()
+        
+        while let row = memoized.next() {
+            if let key = row[diff.firstColumn] {
+                firstTableCache?.insert(key)
+            }
+            if diff.mode == .both {
+                firstTableRows.append(row)
+            }
+        }
+        
+        debug("DiffTableView: Loaded \(firstTableCache?.count ?? 0) rows from first table for diff")
+    }
+    
+    private func filterSecondTableRows() {
+        guard let firstCache = firstTableCache else { return }
+        
+        filteredSecondTableRows = diff.secondTableRows.filter { row in
+            let key = row[diff.secondColIndex]
+            return !firstCache.contains(key)
+        }
+        
+        debug("DiffTableView: Found \(filteredSecondTableRows.count) rows in the second table absent in the first")
+    }
+    
+    private func nextFromSecondTable() -> Row? {
+        guard secondTableCursor < filteredSecondTableRows.count else {
+            return nil
+        }
+        
+        let row = filteredSecondTableRows[secondTableCursor]
+        secondTableCursor += 1
+        
+        if diff.mode == .both {
+            // Add marker column
+            let markerCell = Cell(value: "right", type: .string)
+            return Row(
+                header: header,
+                index: row.index,
+                cells: [markerCell] + row.components
+            )
+        } else {
+            return row
+        }
+    }
+}
+
 /** Table view fully loaded into memory */
 class InMemoryTableView: InMemoryTable {
   var table: any Table  
