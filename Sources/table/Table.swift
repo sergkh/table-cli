@@ -55,14 +55,20 @@ class ParsedTable: Table {
         }        
     }
 
+    func skipTechnicalParts(row: inout String?) -> Bool {
+        let skip = ParsedTable.technicalPart(type: conf.type, str: row)        
+        for _ in 0..<skip {
+            row = nextLine()
+        }
+        return skip > 0
+    }
+
     func next() throws -> Row? {
         line += 1
 
         var row = nextLine()
 
-        while ParsedTable.technicalRow(row) {
-            row = reader.readLine()
-        }
+        while skipTechnicalParts(row: &row) {}
 
         return try! row.map { row in 
             let components = try ParsedTable.readRowComponents(row, type: conf.type, delimeter: conf.delimeter, trim: conf.trim)
@@ -214,8 +220,17 @@ class ParsedTable: Table {
         return components
     }
 
-        // matches rows that has to be skipped, usually horizontal delimeters
+    // matches rows that has to be skipped, usually horizontal delimeters
     private static func technicalRow(_ str: String?) -> Bool {
-        return str?.matches(ParsedTable.technicalRowPattern) ?? false
+        return str?.trimmingCharacters(in: .whitespaces).isEmpty ?? false || str?.matches(ParsedTable.technicalRowPattern) ?? false
+    }
+
+    // extended version that can skip multiple technical rows based on file type, used inside of the file parsing loop
+    private static func technicalPart(type: FileType, str: String?) -> Int {
+        if (type == .cassandraSql && "---MORE---" == str) {
+            // more + header + a line
+            return 3;
+        }
+        return technicalRow(str) ? 1 : 0;
     }
 }
