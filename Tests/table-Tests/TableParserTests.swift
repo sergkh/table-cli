@@ -85,6 +85,37 @@ class TableParserTests: XCTestCase {
         XCTAssertEqual(row.components[2].value, "3")
     }
 
+    func testParseCassandraMoreCursor() throws {
+
+        let table = try ParsedTable.parse(reader: ArrayLineReader(lines: [
+            " id | name",
+            "----+------",
+            "  1 | name1",
+            "  2 | name2",
+            "  3 | name3",
+            "  4 | name4",
+            "  5 | name5",
+            "",
+            "---MORE---",
+            " id | name",
+            "----+-------",
+            "  6 | name6",
+            "  7 | name7",
+            "  8 | name8",
+            "  9 | name9",
+            " 10 | name10"
+        ]), hasHeader: nil, headerOverride: nil, delimeter: "|")
+
+        XCTAssertEqual(table.header.components()[0], "id")
+        XCTAssertEqual(table.header.components()[1], "name")
+
+        for i in 1...10 {
+            let row = try table.next()!
+            XCTAssertEqual(row.components[0].value, "\(i)")
+            XCTAssertEqual(row.components[1].value, "name\(i)")
+        }
+    }
+
     func testQuotedFieldsWithCommas() throws {
         let table = try ParsedTable.parse(reader: ArrayLineReader(lines: [
             "\"Name,Full\",Age,City",
