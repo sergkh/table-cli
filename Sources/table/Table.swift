@@ -73,12 +73,12 @@ class ParsedTable: Table {
         return try! row.map { row in 
             let components = try ParsedTable.readRowComponents(row, type: conf.type, delimeter: conf.delimeter, trim: conf.trim)
 
-            if (components.count != conf.header.size) {
-                debug("WARN: Row \(line) has \(components.count) components, but header has \(conf.header.size) columns. Row:\n'\(row)'")
+            if (components.count != header.size) {
+                debug("WARN: Row \(line) has \(components.count) components, but header has \(header.size) columns. Row:\n'\(row)'")
             }
 
             return Row(
-                header: conf.header,
+                header: header,
                 index:line, 
                 components: components
             ) 
@@ -90,7 +90,7 @@ class ParsedTable: Table {
     }
 
     static func generated(rows: Int) -> ParsedTable {        
-        return ParsedTable(reader: GeneratedLineReader(lines: rows), conf: TableConfig(header: Header.auto(size: 0)), prereadRows: [])
+        return ParsedTable(reader: GeneratedLineReader(lines: rows), conf: TableConfig(header: Header.auto(size: 0), type: .generated), prereadRows: [])
     }
 
     static func fromArray(_ data: [[String]], header: [String]? = nil) -> ParsedTable {
@@ -227,6 +227,10 @@ class ParsedTable: Table {
 
     // extended version that can skip multiple technical rows based on file type, used inside of the file parsing loop
     private static func technicalPart(type: FileType, str: String?) -> Int {
+        if (type == .generated) {
+            return 0;
+        }
+
         if (type == .cassandraSql && "---MORE---" == str) {
             // more + header + a line
             return 3;
