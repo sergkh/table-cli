@@ -3,6 +3,7 @@ enum FileType: CaseIterable {
   case table // own table format
   case sql
   case cassandraSql
+  case generated
 
   static func hasOuterBorders(type: FileType) -> Bool {
     switch type {

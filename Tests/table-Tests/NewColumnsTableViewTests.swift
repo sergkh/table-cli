@@ -140,6 +140,34 @@ class NewColumnsTableViewTests: XCTestCase {
         XCTAssertNil(try newColumnsTable.next())
     }
     
+    func testGeneratedTableWithNewColumns() throws {
+        let table = ParsedTable.generated(rows: 2)
+        
+        let statusFormat = try Format(format: "generated").validated(header: nil)
+        let sourceFormat = try Format(format: "cli").validated(header: nil)
+        let newColumnsTable = NewColumnsTableView(
+            table: table,
+            additionalColumns: [
+                ("status", statusFormat),
+                ("source", sourceFormat)
+            ]
+        )
+        
+        XCTAssertEqual(newColumnsTable.header.columnsStr(), "status,source")
+        
+        let row1 = try newColumnsTable.next()!
+        XCTAssertEqual(row1.index, 0)
+        XCTAssertEqual(row1["status"], "generated")
+        XCTAssertEqual(row1["source"], "cli")
+        
+        let row2 = try newColumnsTable.next()!
+        XCTAssertEqual(row2.index, 1)
+        XCTAssertEqual(row2["status"], "generated")
+        XCTAssertEqual(row2["source"], "cli")
+        
+        XCTAssertNil(try newColumnsTable.next())
+    }
+    
     func testPreservesRowIndex() throws {
         let table = ParsedTable.fromArray([
             ["Alice"],
