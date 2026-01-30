@@ -117,6 +117,11 @@ table file1.csv --join file2.csv --on 'id=product_id'
 table ./test-data/table-format.out --sort "!available,id"
 ```
 
+* Convert SELECT output into INSERT statements:
+```bash
+table select.txt --print 'INSERT INTO table (%{header}) VALUES (%{values(true)});'
+```
+
 * Diff two tables by the 'id' column:
 
 ```bash
