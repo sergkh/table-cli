@@ -42,6 +42,18 @@ class Header {
         cols.firstIndex(of: ofColumn)
     }
 
+    func filter(indexes: Set<Int>) -> Header {
+      let filteredCols = cols.enumerated().filter { index, col in
+        indexes.contains(index)
+      }.map { $0.element }
+      
+      let filteredTypes = cols.enumerated().filter { index, col in
+        indexes.contains(index)
+      }.map { $0.offset < types.count ? types[$0.offset] : .string }
+      
+      return Header(components: filteredCols, types: filteredTypes)
+    }
+
     func type(ofColumn: String) -> CellType? {
       guard let index = index(ofColumn: ofColumn) else { return .string }
       return index < types.count ? types[index] : .string

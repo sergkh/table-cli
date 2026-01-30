@@ -129,6 +129,9 @@ struct MainApp: AsyncParsableCommand {
     )
     var addColumns: [String] = []
 
+    @Option(name: .customLong("remove"), help: "Removes specified columns from the output. Example: --remove password,token.")
+    var removeColumns: [String] = []
+
     @Option(name: .customLong("distinct"), help: "Returns only distinct values for the specified column set. Example: --distinct name,city_id.")
     var distinctColumns: [String] = []
 
@@ -246,6 +249,12 @@ struct MainApp: AsyncParsableCommand {
         if let sample {
             debug("Sampling \(sample)% of the rows")
             table = SampledTableView(table: table, percentage: sample)
+        }
+
+        if !removeColumns.isEmpty {
+            debug("Removing columns: \(removeColumns.joined(separator: ","))")
+            try removeColumns.forEach { if table.header.index(ofColumn: $0) == nil { throw RuntimeError("Column \($0) in remove clause is not found in the table") } }
+            table = HideColumnsTableView(table: table, hideColumns: removeColumns)
         }
 
         let printer = try buildPrinter(formatOpt: formatOpt, outFileFmt: try FileType.outFormat(strFormat: asFormat), outputFile: outputFile)

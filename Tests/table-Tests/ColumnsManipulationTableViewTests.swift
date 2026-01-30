@@ -1,7 +1,7 @@
 import XCTest
 @testable import table
 
-class NewColumnsTableViewTests: XCTestCase {
+class ColumnsManipulationTableViewTests: XCTestCase {
 
     func testAddSingleStaticColumn() throws {
         let table = ParsedTable.fromArray([
@@ -329,6 +329,29 @@ class NewColumnsTableViewTests: XCTestCase {
         XCTAssertEqual(row["max_value"], "Max: 40")
         
         XCTAssertNil(try newColumnsTable.next())
+    }
+
+    func testRemovingColumns() throws {
+        let table = ParsedTable.fromArray([
+            ["Alice", "30", "Engineer"],
+            ["Bob", "25", "Designer"]
+        ], header: ["name", "age", "profession"])
+
+        let hideColumnsTable = HideColumnsTableView(
+            table: table,
+            hideColumns: ["age"]
+        )
+
+        XCTAssertEqual(hideColumnsTable.header.columnsStr(), "name,profession")
+        let row1 = try hideColumnsTable.next()!        
+        XCTAssertEqual(row1["name"], "Alice")
+        XCTAssertEqual(row1["profession"], "Engineer")
+        XCTAssertNil(row1["age"])
+
+        let row2 = try hideColumnsTable.next()!
+        XCTAssertEqual(row2["name"], "Bob")
+        XCTAssertEqual(row2["profession"], "Designer")
+        XCTAssertNil(row2["age"])
     }
 }
 
