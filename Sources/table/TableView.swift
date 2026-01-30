@@ -37,16 +37,16 @@ class JoinTableView: Table {
 class NewColumnsTableView: Table {
   var table: any Table
   let additionalColumns: [(String, Format)]
-
-  var header: Header { 
-    get {
-      return self.table.header + Header(components: additionalColumns.map { $0.0 }, types: additionalColumns.map { _ in CellType.string })
-    }
-  }
+  let header: Header
 
   init(table: any Table, additionalColumns: [(String, Format)]) {
     self.table = table
     self.additionalColumns = additionalColumns
+    self.header = self.table.header + 
+      Header(
+        components: additionalColumns.map { $0.0 }, 
+        types: additionalColumns.map { _ in CellType.string }
+      )
   }
 
   func next() throws -> Row? {
@@ -61,6 +61,40 @@ class NewColumnsTableView: Table {
         header: header, 
         index: row.index, 
         cells: row.components + newColumnsData
+      )
+    } else {
+      return nil
+    }
+  }
+}
+
+/** Table view with additional dynamic columns */
+class HideColumnsTableView: Table {
+  var table: any Table
+  let hideColumns: [String]
+  let hidenIndexes: [Int]  
+  let header: Header
+
+  init(table: any Table, hideColumns: [String]) {
+    self.table = table
+    self.hideColumns = hideColumns
+    self.hidenIndexes = hideColumns.compactMap { col in
+      table.header.index(ofColumn: col)
+    }
+    
+    self.header = table.header.filter(indexes: Set(0..<table.header.size).subtracting(hidenIndexes))
+  }
+
+  func next() throws -> Row? {
+    let row = try table.next()
+
+    if let row {
+      return Row(
+        header: header, 
+        index: row.index, 
+        cells: row.components.enumerated().filter { index, cell in
+          !hidenIndexes.contains(index)
+        }.map { $0.element }
       )
     } else {
       return nil
