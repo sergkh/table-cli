@@ -25,7 +25,7 @@ jobs:
       run: bash -c 'echo "let appVersion = \"`git describe --abbrev=0 --tags` (`date +%F`)\""' > ./Sources/table/Version.swift  
     - name: Build Linux
       if: ${{ matrix.os == 'ubuntu-latest' }}
-      run: swift build -c release
+      run: swift build -c release --static-swift-stdlib
     - name: Rename file
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: bash -c 'mv .build/release/table ./table'
